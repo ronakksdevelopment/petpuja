@@ -3,1696 +3,1106 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>Pet Puja Customer</title>
-<meta name="description" content="Pet Puja Customer - Order tasty food from your favorite tea stall">
-<meta name="theme-color" content="#7a1f1f">
+<title>Pet Puja</title>
+<meta name="description" content="Pet Puja - Order authentic retro Indian street food">
+<meta name="theme-color" content="#8B2E1A">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Pet Puja">
-<meta name="mobile-web-app-capable" content="yes">
 <link rel="apple-touch-icon" href="https://i.ibb.co/GQ48tKry/Untitled475-20260710010108.png">
 <link rel="icon" href="https://i.ibb.co/GQ48tKry/Untitled475-20260710010108.png">
 
-<!--
-  ============================================================
-  PET PUJA CUSTOMER — Single-file PWA
-  Version: 1.0.0
-  Notes:
-   - 100% self-contained: HTML + CSS + JS embedded (only the
-     one requested logo image is an external URL).
-   - Manifest + Service Worker are injected at runtime via Blob
-     URLs, keeping this a true single index.html while still
-     being installable and offline-ready — GitHub Pages safe.
-   - All data (profile, cart, orders, settings) persists in
-     localStorage.
-   - Talks to the companion "Pet Puja Management" (Owner) app
-     through the same SyncBridge protocol: a hidden daily key
-     auto-generated from today's date (e.g. "10JUL2026"), never
-     shown in the UI, stamped on every synced payload for basic
-     integrity/freshness checking. Transport defaults to
-     BroadcastChannel + localStorage (same-browser/device sync)
-     and is a single swappable object, ready to be pointed at
-     Firebase / Supabase / REST later without any UI changes.
-  ============================================================
--->
+<!-- ============================================================
+     PET PUJA CUSTOMER APP v1.0.0
+     Single-file PWA. Retro Indian street food theme.
+     Colors: Yellow #FBC02D | Brick Red #8B2E1A | Black #1A1A1A | White #FFFFFF
+     Syncs live with the Pet Puja Owner App via Firebase Realtime DB
+     ============================================================ -->
 
 <style>
-/* ============================================================
-   1. DESIGN TOKENS — Retro Indian Street Food Theme
-   ============================================================ */
+/* ===================== ROOT VARIABLES ===================== */
 :root{
-  --brick:#7a1f1f;
-  --brick-dark:#4e1414;
-  --brick-light:#a83232;
-  --mustard:#f2b705;
-  --mustard-dark:#c98f02;
-  --cream:#fff8e7;
-  --black:#1a1210;
-  --white:#ffffff;
-  --bulb-glow:#ffd873;
-  --success:#2e8b57;
-  --pending:#c98f02;
-  --accepted:#3a6ea5;
-  --preparing:#a83232;
-  --ready:#2e8b57;
-  --completed:#1a7a3a;
-  --cancelled:#8a1f1f;
+  --yellow:#FBC02D;
+  --brick:#8B2E1A;
+  --black:#1A1A1A;
+  --white:#FFFFFF;
   --radius:16px;
-  --shadow-lg:0 10px 30px rgba(0,0,0,.35);
-  --shadow-sm:0 3px 10px rgba(0,0,0,.25);
-  --font-head:'Georgia','Times New Roman',serif;
-  --font-body:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
-  --safe-top:env(safe-area-inset-top,0px);
-  --safe-bottom:env(safe-area-inset-bottom,0px);
-  --bg:#1a1210;
-  --surface:#241412;
-  --surface2:#190f0e;
-  --text:#fff8e7;
-  --text-dim:rgba(255,248,231,.6);
+  --shadow: 0 4px 14px rgba(0,0,0,.25);
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --bg: var(--black);
+  --surface: var(--white);
+  --text: var(--black);
+  --text-muted: #777;
 }
-
-/* Dark mode is default theme already; "light" mode swaps to a
-   warm cream surface while keeping brick/mustard accents. */
-body.light-mode{
-  --bg:#fbf1d9;
-  --surface:#fffaf0;
-  --surface2:#fff3da;
-  --text:#2b1a12;
-  --text-dim:rgba(43,26,18,.65);
-  --black:#2b1a12;
+/* ---- Dark mode overrides ---- */
+body.dark{
+  --bg:#0F0F0F;
+  --surface:#242220;
+  --text:#F2F2F2;
+  --text-muted:#aaa;
 }
-
-*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
-html,body{margin:0;padding:0;height:100%;font-family:var(--font-body);background:var(--bg);color:var(--text);overscroll-behavior:none;-webkit-font-smoothing:antialiased;}
+*{box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent;}
+html,body{height:100%;}
 body{
-  background-image:
-    radial-gradient(circle at 10% 10%, rgba(242,183,5,.06), transparent 40%),
-    radial-gradient(circle at 90% 30%, rgba(168,50,50,.10), transparent 45%),
-    repeating-linear-gradient(0deg, rgba(0,0,0,.12) 0 2px, transparent 2px 42px),
-    repeating-linear-gradient(90deg, rgba(0,0,0,.1) 0 2px, transparent 2px 84px);
-  background-color:var(--bg);
-  background-attachment:fixed;
-  min-height:100vh;
-  transition:background-color .3s ease,color .3s ease;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  background:var(--black);
+  color:var(--white);
+  overscroll-behavior:none;
+  -webkit-font-smoothing:antialiased;
+  padding-top:var(--safe-top);
+  padding-bottom:var(--safe-bottom);
+  transition:background .3s ease;
 }
-::-webkit-scrollbar{width:6px;height:6px;}
-::-webkit-scrollbar-thumb{background:var(--mustard-dark);border-radius:4px;}
-button{font-family:inherit;}
-input,select,textarea{font-family:inherit;}
-.hidden{display:none !important;}
+button{font-family:inherit; border:none; cursor:pointer; -webkit-appearance:none;}
+input,textarea,select{font-family:inherit;}
+img{max-width:100%; display:block;}
+a{color:inherit; text-decoration:none;}
+::-webkit-scrollbar{width:0; height:0;}
 
-/* ============================================================
-   2. SPLASH SCREEN
-   ============================================================ */
+/* ===================== SPLASH SCREEN ===================== */
 #splash{
-  position:fixed;inset:0;z-index:9999;
-  display:flex;flex-direction:column;align-items:center;justify-content:center;
-  background:radial-gradient(circle at 50% 20%, rgba(242,183,5,.15), transparent 55%), linear-gradient(160deg,#3a1414,#1a1210 70%);
-  transition:opacity .6s ease, visibility .6s ease;
+  position:fixed; inset:0; z-index:9999;
+  background:var(--brick);
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  transition:opacity .5s ease, visibility .5s ease;
 }
-#splash.fade-out{opacity:0;visibility:hidden;pointer-events:none;}
-#splash img{width:120px;height:120px;border-radius:28px;box-shadow:0 0 0 4px var(--mustard),var(--shadow-lg),0 0 40px rgba(242,183,5,.4);animation:popIn .8s cubic-bezier(.34,1.56,.64,1) both, floatY 3s ease-in-out infinite 1s;}
-@keyframes popIn{0%{transform:scale(.4) rotate(-8deg);opacity:0;}100%{transform:scale(1) rotate(0);opacity:1;}}
-@keyframes floatY{0%,100%{transform:translateY(0);}50%{transform:translateY(-8px);}}
-#splash h1{font-family:var(--font-head);color:var(--mustard);font-size:1.8rem;margin:18px 0 4px;text-shadow:0 2px 8px rgba(0,0,0,.6);animation:fadeUp .8s ease .2s both;}
-#splash p{color:var(--cream);opacity:.75;font-size:.85rem;margin:0;animation:fadeUp .8s ease .35s both;}
-@keyframes fadeUp{0%{opacity:0;transform:translateY(10px);}100%{opacity:1;transform:translateY(0);}}
-.splash-loader{margin-top:26px;width:140px;height:4px;border-radius:4px;background:rgba(255,255,255,.15);overflow:hidden;animation:fadeUp .8s ease .5s both;}
-.splash-loader::after{content:"";display:block;height:100%;width:40%;border-radius:4px;background:linear-gradient(90deg,var(--mustard-dark),var(--mustard));animation:loaderSlide 1.1s ease-in-out infinite;}
-@keyframes loaderSlide{0%{transform:translateX(-100%);}50%{transform:translateX(140%);}100%{transform:translateX(140%);}}
-.splash-ver{position:absolute;bottom:calc(20px + var(--safe-bottom));font-size:.7rem;color:rgba(255,248,231,.4);}
+#splash.hide{opacity:0; visibility:hidden; pointer-events:none;}
+#splash img{
+  width:120px; height:120px; border-radius:28px; box-shadow:0 8px 30px rgba(0,0,0,.4);
+  animation:splashPop .8s cubic-bezier(.34,1.56,.64,1);
+  background:var(--white); object-fit:contain; padding:8px;
+}
+#splash h1{ color:var(--yellow); font-size:26px; margin-top:18px; font-weight:800; letter-spacing:.5px; animation:fadeUp .6s ease .2s both; }
+#splash p{ color:var(--white); opacity:.8; font-size:13px; margin-top:6px; animation:fadeUp .6s ease .35s both; }
+#splash .spin{ margin-top:26px; width:34px; height:34px; border-radius:50%; border:3px solid rgba(255,255,255,.25); border-top-color:var(--yellow); animation:spin 1s linear infinite; }
+@keyframes splashPop{0%{transform:scale(.5); opacity:0;}100%{transform:scale(1); opacity:1;}}
+@keyframes fadeUp{0%{transform:translateY(12px); opacity:0;}100%{transform:translateY(0); opacity:1;}}
+@keyframes spin{to{transform:rotate(360deg);}}
 
-/* ============================================================
-   3. APP SHELL
-   ============================================================ */
-#app{display:none;min-height:100vh;padding-bottom:calc(78px + var(--safe-bottom));}
-#app.active{display:block;animation:appIn .45s ease both;}
-@keyframes appIn{0%{opacity:0;}100%{opacity:1;}}
+/* ===================== APP SHELL ===================== */
+#app{ display:flex; flex-direction:column; min-height:100vh; background:var(--bg); }
 
-header.topbar{
-  position:sticky;top:0;z-index:50;
-  padding:calc(12px + var(--safe-top)) 16px 10px;
-  display:flex;align-items:center;gap:12px;
-  background:linear-gradient(180deg, var(--surface), rgba(0,0,0,0));
-  backdrop-filter:blur(8px);
-  border-bottom:1px solid rgba(242,183,5,.18);
+.topbar{
+  background:var(--brick); padding:14px 16px; display:flex; align-items:center; gap:12px;
+  position:sticky; top:0; z-index:30; box-shadow:0 2px 10px rgba(0,0,0,.3);
 }
-header.topbar img.logo{width:38px;height:38px;border-radius:10px;box-shadow:0 0 0 2px var(--mustard);}
-header.topbar .titles{flex:1;min-width:0;}
-header.topbar h1{font-family:var(--font-head);font-size:1.05rem;color:var(--mustard);margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-header.topbar .sub{font-size:.68rem;color:var(--text-dim);}
-.icon-btn{
-  width:38px;height:38px;border-radius:50%;
-  background:rgba(242,183,5,.12);border:1px solid rgba(242,183,5,.3);
-  color:var(--mustard);font-size:1.05rem;
-  display:flex;align-items:center;justify-content:center;cursor:pointer;
-  transition:background .2s, transform .15s;position:relative;
-}
-.icon-btn:active{transform:scale(.9);}
-.icon-btn .badge{
-  position:absolute;top:-4px;right:-4px;background:var(--brick-light);color:#fff;
-  font-size:.6rem;min-width:16px;height:16px;border-radius:8px;
-  display:flex;align-items:center;justify-content:center;padding:0 3px;border:2px solid var(--bg);
-}
-main{padding:16px;max-width:640px;margin:0 auto;}
+.topbar img.logo{ width:38px; height:38px; border-radius:10px; background:var(--yellow); padding:4px; object-fit:contain; }
+.topbar .title{ flex:1; }
+.topbar .title h1{ font-size:16px; font-weight:800; color:var(--white); }
+.topbar .title span{ font-size:11px; color:var(--yellow); font-weight:600; }
+.icon-btn{ width:38px; height:38px; border-radius:10px; background:rgba(255,255,255,.12); display:flex; align-items:center; justify-content:center; color:var(--white); font-size:17px; position:relative;}
+.icon-btn:active{ background:rgba(255,255,255,.25); }
+.icon-btn .dot{ position:absolute; top:5px; right:5px; width:8px; height:8px; border-radius:50%; background:var(--yellow); display:none; }
+.icon-btn .dot.show{ display:block; }
 
-.page-head{display:flex;align-items:center;gap:10px;margin-bottom:16px;}
-.page-head .back-btn{width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:var(--text);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:1rem;}
-.page-head h2{font-family:var(--font-head);color:var(--mustard);font-size:1.25rem;margin:0;flex:1;}
+.view{ display:none; flex:1; padding:16px; padding-bottom:110px; animation:fadeUp .35s ease; }
+.view.active{ display:block; }
 
-/* ============================================================
-   4. HOME PAGE
-   ============================================================ */
-.hero-card{
-  border-radius:var(--radius);padding:20px 16px;margin-bottom:16px;text-align:center;
-  background:linear-gradient(145deg, rgba(122,31,31,.5), rgba(0,0,0,.25)), var(--surface);
-  border:1px solid rgba(242,183,5,.25);
-  box-shadow:var(--shadow-sm);
-  position:relative;overflow:hidden;
+.conn-badge{
+  position:fixed; top:calc(var(--safe-top) + 10px); left:10px; z-index:50;
+  font-size:11px; font-weight:700; padding:5px 10px; border-radius:20px;
+  background:rgba(0,0,0,.5); color:var(--white); display:flex; align-items:center; gap:5px;
 }
-.hero-card::before{
-  content:"";position:absolute;inset:0;pointer-events:none;
-  background:repeating-linear-gradient(0deg, rgba(0,0,0,.15) 0 3px, transparent 3px 34px), repeating-linear-gradient(90deg, rgba(0,0,0,.1) 0 3px, transparent 3px 68px);
-  opacity:.5;
-}
-.hero-card img{width:76px;height:76px;border-radius:20px;box-shadow:0 0 0 3px var(--mustard),0 0 26px rgba(242,183,5,.35);margin-bottom:10px;position:relative;animation:floatY 3.4s ease-in-out infinite;}
-.hero-card h2{font-family:var(--font-head);color:var(--mustard);margin:2px 0 2px;font-size:1.3rem;position:relative;}
-.hero-card p{margin:0;font-size:.8rem;color:var(--text-dim);position:relative;}
-.shop-status{
-  display:inline-flex;align-items:center;gap:6px;margin-top:10px;
-  background:rgba(0,0,0,.25);padding:5px 12px;border-radius:20px;font-size:.72rem;position:relative;
-}
-.shop-status .dot{width:8px;height:8px;border-radius:50%;background:var(--success);box-shadow:0 0 6px var(--success);}
-.shop-status.closed .dot{background:var(--cancelled);box-shadow:0 0 6px var(--cancelled);}
+.conn-dot{ width:7px; height:7px; border-radius:50%; background:#e53935; }
+.conn-dot.on{ background:#43A047; box-shadow:0 0 6px #43A047; }
 
-.action-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;}
-.action-btn{
-  display:flex;flex-direction:column;align-items:center;gap:6px;
-  padding:14px 8px;border-radius:14px;border:1px solid rgba(242,183,5,.2);
-  background:var(--surface);color:var(--text);cursor:pointer;
-  transition:transform .15s ease, border-color .15s ease;
+/* ===================== ANNOUNCEMENT BANNER ===================== */
+.announce-banner{
+  background:var(--yellow); color:var(--black); padding:10px 14px; font-size:12.5px; font-weight:700;
+  display:none; align-items:center; gap:8px;
 }
-.action-btn:active{transform:scale(.94);}
-.action-btn .ic{font-size:1.4rem;}
-.action-btn span.lbl{font-size:.75rem;font-weight:600;}
+.announce-banner.show{ display:flex; animation:fadeUp .4s ease; }
+.announce-banner .ic{ font-size:15px; }
 
-.conn-indicator{
-  display:flex;align-items:center;gap:8px;justify-content:center;
-  font-size:.72rem;color:var(--text-dim);margin-bottom:16px;
-  background:var(--surface);border-radius:20px;padding:8px 12px;border:1px solid rgba(242,183,5,.14);
-}
-.conn-indicator .pulse{width:9px;height:9px;border-radius:50%;background:var(--success);position:relative;flex-shrink:0;}
-.conn-indicator .pulse::after{
-  content:"";position:absolute;inset:-4px;border-radius:50%;border:2px solid var(--success);
-  animation:pulseRing 1.6s ease-out infinite;
-}
-.conn-indicator.offline .pulse{background:#999;}
-.conn-indicator.offline .pulse::after{border-color:#999;}
-@keyframes pulseRing{0%{transform:scale(.6);opacity:.8;}100%{transform:scale(1.8);opacity:0;}}
-
-.section-title{font-family:var(--font-head);color:var(--mustard);font-size:1.05rem;margin:0 0 10px;display:flex;align-items:center;gap:8px;}
-
-.announce-card{
-  padding:12px 14px;border-radius:12px;margin-bottom:8px;
-  background:rgba(242,183,5,.08);border-left:3px solid var(--mustard);
-}
-.announce-card h5{margin:0 0 3px;font-size:.82rem;color:var(--mustard);}
-.announce-card p{margin:0;font-size:.75rem;color:var(--text-dim);}
-.announce-card small{color:var(--text-dim);font-size:.62rem;opacity:.8;}
-
-.big-cta{
-  width:100%;padding:16px;border-radius:16px;margin-top:6px;
-  background:linear-gradient(135deg,var(--mustard),var(--mustard-dark));
-  color:var(--black);font-weight:800;font-size:1rem;border:none;cursor:pointer;
-  box-shadow:0 8px 22px rgba(242,183,5,.35);
-  display:flex;align-items:center;justify-content:center;gap:8px;
-  transition:transform .15s ease;
-}
-.big-cta:active{transform:scale(.97);}
-
-/* ============================================================
-   5. MENU PAGE
-   ============================================================ */
+/* ===================== SEARCH BAR ===================== */
 .search-bar{
-  display:flex;align-items:center;gap:8px;
-  background:var(--surface);border:1px solid rgba(242,183,5,.25);
-  border-radius:14px;padding:10px 14px;margin-bottom:14px;
+  display:flex; align-items:center; gap:8px; background:var(--surface); border-radius:14px;
+  padding:12px 14px; margin-bottom:16px; box-shadow:var(--shadow);
 }
-.search-bar input{flex:1;background:none;border:none;outline:none;color:var(--text);font-size:.9rem;}
-.search-bar .ic{color:var(--mustard);}
-
-.cat-scroll{display:flex;gap:8px;overflow-x:auto;padding-bottom:10px;margin-bottom:6px;scrollbar-width:none;}
-.cat-scroll::-webkit-scrollbar{display:none;}
-.cat-chip{
-  flex-shrink:0;padding:8px 16px;border-radius:20px;font-size:.78rem;font-weight:600;
-  background:var(--surface);border:1px solid rgba(242,183,5,.2);color:var(--text-dim);cursor:pointer;
-  transition:background .2s, color .2s, border-color .2s;white-space:nowrap;
+.search-bar input{
+  flex:1; border:none; background:none; font-size:14px; color:var(--text); outline:none;
 }
-.cat-chip.active{background:linear-gradient(135deg,var(--mustard),var(--mustard-dark));color:var(--black);border-color:transparent;}
+.search-bar .ic{ font-size:16px; color:var(--text-muted); }
 
+/* ===================== SHOP INFO BANNER ===================== */
+.shop-hero{
+  background:linear-gradient(135deg, var(--brick), #6b2313); border-radius:18px; padding:18px;
+  margin-bottom:16px; display:flex; align-items:center; gap:14px; box-shadow:var(--shadow);
+}
+.shop-hero img{ width:52px; height:52px; border-radius:14px; background:var(--yellow); padding:6px; object-fit:contain; }
+.shop-hero .info h2{ font-size:16px; font-weight:800; color:var(--white); }
+.shop-hero .info p{ font-size:11.5px; color:var(--yellow); margin-top:2px; }
+.shop-hero .info .hours{ font-size:10.5px; color:#ddd; margin-top:3px;}
+
+.quick-actions{ display:flex; gap:10px; margin-bottom:18px; }
+.qa-btn{
+  flex:1; background:var(--surface); color:var(--text); border-radius:14px; padding:12px 8px;
+  display:flex; flex-direction:column; align-items:center; gap:5px; font-size:11px; font-weight:700;
+  box-shadow:var(--shadow);
+}
+.qa-btn .ic{ font-size:18px; }
+.qa-btn:active{ transform:scale(.95); }
+
+/* ===================== MENU LIST ===================== */
 .menu-card{
-  display:flex;gap:12px;padding:12px;border-radius:14px;margin-bottom:10px;
-  background:var(--surface);border:1px solid rgba(242,183,5,.14);box-shadow:var(--shadow-sm);
+  background:var(--surface); color:var(--text); border-radius:16px; padding:12px; display:flex; gap:12px;
+  margin-bottom:12px; box-shadow:var(--shadow); align-items:center; transition:transform .15s ease;
 }
-.menu-card img{width:64px;height:64px;border-radius:12px;object-fit:cover;flex-shrink:0;border:1px solid rgba(242,183,5,.2);background:#000;}
-.menu-card .info{flex:1;min-width:0;}
-.menu-card .info h4{margin:0 0 3px;font-size:.9rem;color:var(--text);}
-.menu-card .info p{margin:0;font-size:.7rem;color:var(--text-dim);overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;}
-.menu-card .row-bottom{display:flex;align-items:center;justify-content:space-between;margin-top:8px;}
-.menu-card .price-tag{color:var(--mustard);font-weight:700;font-size:.88rem;}
-.menu-card.unavailable{opacity:.5;}
-.menu-card .unavail-badge{font-size:.62rem;background:rgba(138,31,31,.3);color:#ff9d9d;padding:2px 8px;border-radius:8px;}
+.menu-card img{ width:72px; height:72px; border-radius:12px; object-fit:cover; background:#eee; flex-shrink:0;}
+.menu-card .info{ flex:1; min-width:0; }
+.menu-card .info h4{ font-size:14.5px; font-weight:800; }
+.menu-card .info p{ font-size:11.5px; color:var(--text-muted); margin-top:2px; overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;}
+.menu-card .price{ font-size:14px; font-weight:800; color:var(--brick); margin-top:5px; }
+.menu-card .add-area{ display:flex; flex-direction:column; align-items:center; gap:6px; }
+.add-btn{
+  background:var(--yellow); color:var(--black); font-size:12px; font-weight:800; padding:8px 14px; border-radius:10px;
+  white-space:nowrap;
+}
+.add-btn:active{ transform:scale(.92); }
+.qty-control{
+  display:flex; align-items:center; gap:8px; background:var(--yellow); border-radius:10px; padding:4px 8px;
+}
+.qty-control button{ width:22px; height:22px; border-radius:6px; background:var(--black); color:var(--white); font-size:14px; font-weight:800; display:flex; align-items:center; justify-content:center;}
+.qty-control span{ font-size:13px; font-weight:800; color:var(--black); min-width:14px; text-align:center; }
 
-.qty-ctrl{display:flex;align-items:center;gap:8px;background:rgba(0,0,0,.2);border-radius:10px;padding:3px;}
-.qty-ctrl button{
-  width:26px;height:26px;border-radius:8px;border:none;background:var(--mustard);color:var(--black);
-  font-weight:800;font-size:.9rem;cursor:pointer;display:flex;align-items:center;justify-content:center;
-}
-.qty-ctrl span{min-width:18px;text-align:center;font-size:.85rem;font-weight:700;}
-.add-cart-btn{
-  padding:7px 14px;border-radius:10px;border:none;background:linear-gradient(135deg,var(--mustard),var(--mustard-dark));
-  color:var(--black);font-weight:700;font-size:.78rem;cursor:pointer;
-}
-
-/* Floating cart bar */
+/* ===================== CART BAR ===================== */
 #cartBar{
-  position:fixed;left:12px;right:12px;bottom:calc(84px + var(--safe-bottom));z-index:55;
-  background:linear-gradient(135deg,var(--brick-light),var(--brick-dark));
-  border-radius:16px;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;
-  box-shadow:0 10px 26px rgba(0,0,0,.4);color:#fff;cursor:pointer;
-  animation:cartIn .3s ease both;border:1px solid rgba(242,183,5,.35);
+  position:fixed; left:12px; right:12px; bottom:calc(72px + var(--safe-bottom)); z-index:45;
+  background:var(--brick); border-radius:16px; padding:13px 16px; display:none; align-items:center;
+  justify-content:space-between; box-shadow:0 8px 24px rgba(0,0,0,.4); animation:slideUp .3s ease;
 }
-@keyframes cartIn{0%{opacity:0;transform:translateY(20px);}100%{opacity:1;transform:translateY(0);}}
-#cartBar .cb-left{display:flex;flex-direction:column;}
-#cartBar .cb-left b{font-size:.95rem;}
-#cartBar .cb-left span{font-size:.68rem;opacity:.85;}
-#cartBar .cb-right{display:flex;align-items:center;gap:6px;font-weight:700;}
+#cartBar.show{ display:flex; }
+#cartBar .left{ color:var(--white); }
+#cartBar .left .count{ font-size:11px; opacity:.85; }
+#cartBar .left .total{ font-size:16px; font-weight:800; }
+#cartBar button{ background:var(--yellow); color:var(--black); padding:10px 18px; border-radius:10px; font-size:13px; font-weight:800; }
 
-/* ============================================================
-   6. CART / CHECKOUT
-   ============================================================ */
-.cart-item{
-  display:flex;gap:10px;align-items:center;padding:10px;border-radius:12px;margin-bottom:8px;
-  background:var(--surface);border:1px solid rgba(242,183,5,.14);
-}
-.cart-item img{width:48px;height:48px;border-radius:10px;object-fit:cover;background:#000;}
-.cart-item .ci-info{flex:1;min-width:0;}
-.cart-item .ci-info h5{margin:0 0 2px;font-size:.85rem;color:var(--text);}
-.cart-item .ci-info span{font-size:.72rem;color:var(--mustard);}
-.cart-item .remove-btn{background:none;border:none;color:#ff9d9d;font-size:1rem;cursor:pointer;padding:4px;}
-
-.total-row{display:flex;justify-content:space-between;align-items:center;padding:14px 4px;font-size:1rem;font-weight:700;color:var(--text);border-top:1px dashed rgba(242,183,5,.3);margin-top:8px;}
-.total-row b{color:var(--mustard);font-size:1.2rem;}
-
-.panel{background:var(--surface);border:1px solid rgba(242,183,5,.16);border-radius:var(--radius);padding:14px;margin-bottom:14px;box-shadow:var(--shadow-sm);}
-.form-row{margin-bottom:12px;}
-.form-row label{display:block;font-size:.72rem;color:var(--mustard);margin-bottom:5px;font-weight:600;letter-spacing:.3px;}
-.form-row input,.form-row textarea,.form-row select{
-  width:100%;padding:11px 12px;border-radius:10px;border:1px solid rgba(242,183,5,.25);
-  background:rgba(0,0,0,.18);color:var(--text);font-size:.9rem;outline:none;
-}
-body.light-mode .form-row input,body.light-mode .form-row textarea,body.light-mode .form-row select{background:rgba(0,0,0,.04);}
-.form-row textarea{resize:vertical;min-height:56px;}
-.form-row input:focus,.form-row textarea:focus,.form-row select:focus{border-color:var(--mustard);box-shadow:0 0 0 3px rgba(242,183,5,.15);}
-
-.pay-options{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:6px;}
-.pay-opt{
-  padding:12px 6px;border-radius:12px;border:1px solid rgba(242,183,5,.25);background:var(--surface2);
-  text-align:center;cursor:pointer;font-size:.78rem;font-weight:600;color:var(--text-dim);
-  transition:border-color .2s, background .2s, color .2s;
-}
-.pay-opt.active{border-color:var(--mustard);background:rgba(242,183,5,.12);color:var(--mustard);}
-.pay-opt .ic{display:block;font-size:1.3rem;margin-bottom:4px;}
-
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:none;border-radius:12px;cursor:pointer;font-weight:700;font-size:.95rem;letter-spacing:.3px;transition:transform .15s ease, box-shadow .15s ease, filter .15s ease;user-select:none;}
-.btn:active{transform:scale(.96);}
-.btn-mustard{background:linear-gradient(135deg,var(--mustard),var(--mustard-dark));color:var(--black);box-shadow:0 6px 16px rgba(242,183,5,.3);}
-.btn-brick{background:linear-gradient(135deg,var(--brick-light),var(--brick-dark));color:#fff;box-shadow:0 6px 16px rgba(122,31,31,.4);}
-.btn-outline{background:transparent;border:1px solid rgba(242,183,5,.4);color:var(--mustard);}
-.btn-ghost{background:rgba(120,120,120,.1);color:var(--text);border:1px solid rgba(120,120,120,.2);}
-.btn-block{width:100%;padding:14px;border-radius:12px;margin-top:6px;}
-.btn-sm{padding:8px 12px;font-size:.78rem;border-radius:9px;}
-.btn-row{display:flex;gap:8px;}
-.btn-row .btn{flex:1;}
-
-/* ============================================================
-   7. ORDER CONFIRMATION / TRACKING
-   ============================================================ */
-.confirm-wrap{text-align:center;padding:20px 0;}
-.confirm-icon{
-  width:80px;height:80px;border-radius:50%;margin:0 auto 16px;
-  background:radial-gradient(circle at 30% 30%, var(--mustard), var(--mustard-dark));
-  display:flex;align-items:center;justify-content:center;font-size:2.2rem;
-  box-shadow:0 0 30px rgba(242,183,5,.4);
-  animation:popIn .5s cubic-bezier(.34,1.56,.64,1) both;
-}
-.confirm-wrap h2{font-family:var(--font-head);color:var(--mustard);margin:0 0 6px;}
-.confirm-wrap .ordno{font-size:1.6rem;font-weight:800;color:var(--text);letter-spacing:1px;margin:8px 0;}
-.confirm-wrap .wait-pill{
-  display:inline-flex;align-items:center;gap:6px;background:rgba(242,183,5,.12);
-  padding:8px 16px;border-radius:20px;font-size:.85rem;color:var(--mustard);margin-top:6px;
-}
-
-.track-stepper{display:flex;flex-direction:column;gap:0;margin:20px 0;}
-.track-step{display:flex;gap:12px;position:relative;padding-bottom:26px;}
-.track-step:last-child{padding-bottom:0;}
-.track-step .tdot{
-  width:26px;height:26px;border-radius:50%;background:var(--surface2);border:2px solid rgba(242,183,5,.25);
-  display:flex;align-items:center;justify-content:center;font-size:.7rem;flex-shrink:0;color:var(--text-dim);
-  position:relative;z-index:2;
-}
-.track-step.done .tdot{background:var(--success);border-color:var(--success);color:#fff;}
-.track-step.current .tdot{background:var(--mustard);border-color:var(--mustard);color:var(--black);box-shadow:0 0 0 6px rgba(242,183,5,.2);animation:currentPulse 1.5s ease-in-out infinite;}
-@keyframes currentPulse{0%,100%{box-shadow:0 0 0 6px rgba(242,183,5,.2);}50%{box-shadow:0 0 0 10px rgba(242,183,5,.08);}}
-.track-step.cancelled .tdot{background:var(--cancelled);border-color:var(--cancelled);color:#fff;}
-.track-step::before{
-  content:"";position:absolute;left:12px;top:26px;bottom:-26px;width:2px;background:rgba(242,183,5,.15);z-index:1;
-}
-.track-step:last-child::before{display:none;}
-.track-step.done::before{background:var(--success);}
-.track-step .tlabel{font-size:.85rem;font-weight:600;color:var(--text);padding-top:3px;}
-.track-step .tsub{font-size:.68rem;color:var(--text-dim);}
-
-/* ============================================================
-   8. ORDER HISTORY / PROFILE
-   ============================================================ */
-.hist-card{
-  border-radius:14px;padding:14px;margin-bottom:10px;background:var(--surface);border:1px solid rgba(242,183,5,.14);
-}
-.hist-top{display:flex;justify-content:space-between;align-items:center;}
-.hist-id{font-weight:700;color:var(--mustard);font-size:.88rem;}
-.hist-time{font-size:.65rem;color:var(--text-dim);}
-.status-badge{font-size:.65rem;font-weight:700;padding:4px 9px;border-radius:20px;color:#fff;white-space:nowrap;}
-.status-Pending{background:var(--pending);}
-.status-Accepted{background:var(--accepted);}
-.status-Preparing{background:var(--preparing);}
-.status-Ready{background:var(--ready);}
-.status-Completed{background:var(--completed);}
-.status-Cancelled{background:var(--cancelled);}
-.hist-items{font-size:.75rem;color:var(--text-dim);margin:8px 0;line-height:1.4;}
-.hist-foot{display:flex;gap:8px;margin-top:8px;}
-
-/* Feedback stars input */
-.star-input{display:flex;gap:8px;justify-content:center;margin:14px 0;}
-.star-input button{background:none;border:none;font-size:2rem;cursor:pointer;color:rgba(242,183,5,.25);transition:transform .15s, color .15s;}
-.star-input button.filled{color:var(--mustard);}
-.star-input button:active{transform:scale(1.2);}
-
-/* Switch */
-.switch-row{display:flex;align-items:center;justify-content:space-between;padding:12px 2px;border-bottom:1px solid rgba(242,183,5,.08);}
-.switch-row:last-child{border-bottom:none;}
-.switch-row span{font-size:.85rem;color:var(--text);}
-.switch{position:relative;width:44px;height:24px;flex-shrink:0;}
-.switch input{opacity:0;width:0;height:0;}
-.slider-tog{position:absolute;inset:0;background:rgba(120,120,120,.25);border-radius:24px;cursor:pointer;transition:background .2s;}
-.slider-tog::before{content:"";position:absolute;width:18px;height:18px;left:3px;top:3px;background:#fff;border-radius:50%;transition:transform .2s;box-shadow:0 2px 4px rgba(0,0,0,.3);}
-.switch input:checked + .slider-tog{background:var(--mustard-dark);}
-.switch input:checked + .slider-tog::before{transform:translateX(20px);}
-
-.empty-state{text-align:center;padding:40px 16px;color:var(--text-dim);}
-.empty-state .em{font-size:2.4rem;margin-bottom:8px;}
-.empty-state p{font-size:.82rem;}
-
-/* ============================================================
-   9. BOTTOM NAV
-   ============================================================ */
+/* ===================== BOTTOM NAV ===================== */
 .bottom-nav{
-  position:fixed;left:0;right:0;bottom:0;z-index:60;
-  display:flex;justify-content:space-around;align-items:center;
-  padding:8px 4px calc(8px + var(--safe-bottom));
-  background:linear-gradient(180deg, rgba(26,18,16,.9), rgba(18,11,10,.98));
-  backdrop-filter:blur(10px);border-top:1px solid rgba(242,183,5,.2);
+  position:fixed; left:0; right:0; bottom:0; z-index:40;
+  background:var(--surface); border-top:1.5px solid rgba(128,128,128,.2);
+  display:flex; padding:8px 4px calc(8px + var(--safe-bottom));
 }
-body.light-mode .bottom-nav{background:linear-gradient(180deg, rgba(255,250,240,.9), rgba(255,243,218,.98));}
 .nav-btn{
-  background:none;border:none;color:var(--text-dim);display:flex;flex-direction:column;align-items:center;gap:2px;
-  font-size:.6rem;cursor:pointer;padding:4px 10px;border-radius:10px;transition:color .2s, transform .15s;position:relative;
+  flex:1; display:flex; flex-direction:column; align-items:center; gap:3px;
+  background:none; color:var(--text-muted); font-size:10px; font-weight:700; padding:6px 2px; border-radius:10px;
 }
-.nav-btn .ni{font-size:1.15rem;}
-.nav-btn.active{color:var(--mustard);}
-.nav-btn:active{transform:scale(.88);}
-.nav-btn .nbadge{
-  position:absolute;top:-2px;right:2px;background:var(--brick-light);color:#fff;font-size:.55rem;
-  min-width:14px;height:14px;border-radius:7px;display:flex;align-items:center;justify-content:center;
-}
+.nav-btn .ic{ font-size:19px; }
+.nav-btn.active{ color:var(--brick); }
 
-/* ============================================================
-   10. INSTALL BANNER, TOASTS, MODALS, POPUPS
-   ============================================================ */
+/* ===================== SECTION HEADER ===================== */
+.section-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
+.section-head h2{ font-size:19px; font-weight:800; color:var(--white); }
+body.dark .section-head h2{ color:var(--white);}
+.back-btn{ display:flex; align-items:center; gap:6px; color:var(--yellow); font-weight:700; font-size:13px; background:none; }
+
+/* ===================== CART VIEW ===================== */
+.cart-item{
+  background:var(--surface); color:var(--text); border-radius:14px; padding:12px; display:flex; gap:12px;
+  margin-bottom:10px; align-items:center; box-shadow:var(--shadow);
+}
+.cart-item img{ width:56px; height:56px; border-radius:10px; object-fit:cover; }
+.cart-item .info{ flex:1; }
+.cart-item .info h4{ font-size:13.5px; font-weight:800; }
+.cart-item .info .price{ font-size:12px; color:var(--brick); font-weight:700; margin-top:2px;}
+
+.checkout-box{ background:var(--surface); color:var(--text); border-radius:16px; padding:16px; margin-top:16px; box-shadow:var(--shadow); }
+.checkout-box h3{ font-size:15px; font-weight:800; margin-bottom:12px; }
+.field{ text-align:left; margin-bottom:14px; }
+.field label{ font-size:11.5px; font-weight:700; color:var(--brick); text-transform:uppercase; letter-spacing:.4px; }
+.field input, .field textarea{
+  width:100%; margin-top:6px; padding:12px 14px; border-radius:10px; border:2px solid rgba(128,128,128,.25);
+  background:rgba(128,128,128,.06); font-size:14px; color:var(--text);
+}
+.field input:focus, .field textarea:focus{ outline:none; border-color:var(--yellow); }
+.pay-options{ display:flex; gap:8px; }
+.pay-opt{
+  flex:1; padding:12px 6px; border-radius:10px; border:2px solid rgba(128,128,128,.25); text-align:center;
+  font-size:12px; font-weight:700; color:var(--text);
+}
+.pay-opt.active{ background:var(--yellow); border-color:var(--yellow); color:var(--black); }
+.total-row{ display:flex; justify-content:space-between; font-size:15px; font-weight:800; margin:14px 0; padding-top:12px; border-top:1.5px dashed rgba(128,128,128,.3); }
+
+.btn{ width:100%; padding:15px; border-radius:12px; font-size:15px; font-weight:800; background:var(--brick); color:var(--white); letter-spacing:.3px; box-shadow:0 4px 12px rgba(139,46,26,.35); }
+.btn:active{ transform:scale(.97); }
+.btn-yellow{ background:var(--yellow); color:var(--black); box-shadow:0 4px 12px rgba(251,192,45,.4); }
+.btn-outline{ background:transparent; color:var(--brick); border:2px solid var(--brick); box-shadow:none; }
+
+/* ===================== ORDER TRACKING ===================== */
+.order-track-card{
+  background:var(--surface); color:var(--text); border-radius:16px; padding:16px; margin-bottom:14px; box-shadow:var(--shadow);
+}
+.order-track-card .otc-head{ display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;}
+.order-track-card .otc-head h4{ font-size:15px; font-weight:800; }
+.order-track-card .otc-head .time{ font-size:10.5px; color:var(--text-muted); }
+
+.timeline{ display:flex; flex-direction:column; gap:0; }
+.tl-step{ display:flex; gap:12px; position:relative; padding-bottom:22px; }
+.tl-step:last-child{ padding-bottom:0; }
+.tl-dot{
+  width:26px; height:26px; border-radius:50%; background:#ddd; display:flex; align-items:center; justify-content:center;
+  font-size:12px; color:#999; flex-shrink:0; z-index:2; font-weight:800;
+}
+.tl-step.done .tl-dot{ background:var(--brick); color:var(--white); }
+.tl-step.current .tl-dot{ background:var(--yellow); color:var(--black); box-shadow:0 0 0 4px rgba(251,192,45,.3); animation:pulse 1.5s infinite; }
+@keyframes pulse{0%,100%{box-shadow:0 0 0 4px rgba(251,192,45,.3);}50%{box-shadow:0 0 0 8px rgba(251,192,45,.15);}}
+.tl-step::before{
+  content:''; position:absolute; left:12.5px; top:26px; bottom:0; width:2px; background:#ddd;
+}
+.tl-step:last-child::before{ display:none; }
+.tl-step.done::before{ background:var(--brick); }
+.tl-line{ flex:1; }
+.tl-line h5{ font-size:13px; font-weight:800; margin-top:2px; }
+.tl-line p{ font-size:11px; color:var(--text-muted); margin-top:1px; }
+.tl-step.cancelled .tl-dot{ background:#c62828; color:var(--white); }
+
+.order-track-card .items-mini{ font-size:12px; color:var(--text-muted); margin-top:10px; background:rgba(128,128,128,.08); border-radius:10px; padding:8px 10px; }
+
+/* ===================== FEEDBACK VIEW ===================== */
+.star-picker{ display:flex; gap:10px; justify-content:center; margin:16px 0; }
+.star-picker span{ font-size:34px; color:#ddd; cursor:pointer; transition:transform .15s ease; }
+.star-picker span.active{ color:var(--yellow); transform:scale(1.15); }
+
+/* ===================== EMPTY STATE ===================== */
+.empty-state{ text-align:center; padding:50px 20px; color:var(--text-muted); }
+.empty-state .ic{ font-size:44px; margin-bottom:12px; }
+.empty-state p{ font-size:13px; }
+body.dark .empty-state{ color:#999; }
+.view .empty-state{ color:#999; }
+
+/* ===================== MODAL (item detail) ===================== */
+.modal-overlay{ position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:60; display:none; align-items:flex-end; justify-content:center; }
+.modal-overlay.show{ display:flex; animation:fadeIn .2s ease; }
+@keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
+.modal{ background:var(--surface); color:var(--text); width:100%; max-width:480px; border-radius:22px 22px 0 0; padding:22px 20px calc(22px + var(--safe-bottom)); max-height:88vh; overflow-y:auto; animation:slideUp .3s cubic-bezier(.2,.8,.3,1); }
+@keyframes slideUp{from{transform:translateY(100%);}to{transform:translateY(0);}}
+.modal-handle{ width:40px; height:4px; background:#ccc; border-radius:4px; margin:0 auto 16px; }
+.modal h3{ font-size:18px; font-weight:800; margin-bottom:10px; }
+.modal img.detail-img{ width:100%; height:170px; object-fit:cover; border-radius:14px; margin-bottom:14px; }
+.modal-actions{ display:flex; gap:10px; margin-top:18px; }
+.modal-actions .btn{ flex:1; }
+
+/* ===================== TOAST ===================== */
+#toast{
+  position:fixed; left:50%; bottom:calc(90px + var(--safe-bottom)); transform:translateX(-50%) translateY(20px);
+  background:var(--black); color:var(--white); padding:12px 20px; border-radius:30px; font-size:13px; font-weight:700;
+  box-shadow:0 6px 20px rgba(0,0,0,.4); z-index:100; opacity:0; pointer-events:none; transition:all .3s ease;
+  border:1.5px solid var(--yellow); max-width:88%; text-align:center;
+}
+#toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+
+/* ===================== INSTALL BANNER ===================== */
 #installBanner{
-  position:fixed;left:12px;right:12px;bottom:calc(84px + var(--safe-bottom));z-index:70;
-  background:linear-gradient(135deg, var(--mustard), var(--mustard-dark));color:var(--black);border-radius:16px;
-  padding:12px 14px;display:flex;align-items:center;gap:10px;box-shadow:0 10px 26px rgba(0,0,0,.45);
-  animation:bannerBounce 2.6s ease-in-out infinite;cursor:pointer;
+  position:fixed; left:12px; right:12px; bottom:calc(72px + var(--safe-bottom)); z-index:70;
+  background:var(--yellow); color:var(--black); border-radius:16px; padding:12px 14px;
+  display:none; align-items:center; gap:12px; box-shadow:0 8px 24px rgba(0,0,0,.4); animation:slideUp .4s ease;
 }
-#installBanner .ib-text{flex:1;}
-#installBanner .ib-text b{display:block;font-size:.85rem;}
-#installBanner .ib-text span{font-size:.65rem;opacity:.75;}
-#installBanner button.ib-close{background:rgba(0,0,0,.15);border:none;color:var(--black);width:24px;height:24px;border-radius:50%;font-size:.8rem;cursor:pointer;flex-shrink:0;}
-@keyframes bannerBounce{0%,100%{transform:translateY(0);}50%{transform:translateY(-6px);}}
+#installBanner.show{ display:flex; }
+#installBanner img{ width:38px; height:38px; border-radius:10px; background:var(--white); padding:4px; object-fit:contain;}
+#installBanner .txt{ flex:1; }
+#installBanner .txt strong{ font-size:13px; display:block; }
+#installBanner .txt span{ font-size:10.5px; opacity:.8; }
+#installBanner button.go{ background:var(--brick); color:var(--white); padding:8px 14px; border-radius:10px; font-size:12px; font-weight:800; }
+#installBanner button.close{ background:none; color:var(--black); font-size:18px; font-weight:800; padding:4px 6px; opacity:.6;}
 
-#toastWrap{position:fixed;top:calc(10px + var(--safe-top));left:0;right:0;z-index:9997;display:flex;flex-direction:column;align-items:center;gap:8px;pointer-events:none;}
-.toast{background:var(--surface2);border:1px solid rgba(242,183,5,.35);color:var(--text);padding:10px 16px;border-radius:30px;font-size:.78rem;box-shadow:var(--shadow-lg);animation:toastIn .3s ease both, toastOut .3s ease 2.7s both;max-width:88%;text-align:center;}
-@keyframes toastIn{0%{opacity:0;transform:translateY(-14px);}100%{opacity:1;transform:translateY(0);}}
-@keyframes toastOut{0%{opacity:1;}100%{opacity:0;transform:translateY(-10px);}}
-
-.modal-overlay{position:fixed;inset:0;z-index:9990;background:rgba(0,0,0,.6);display:flex;align-items:flex-end;justify-content:center;animation:fadeIn .25s ease both;}
-@keyframes fadeIn{0%{opacity:0;}100%{opacity:1;}}
-.modal-sheet{width:100%;max-width:480px;max-height:88vh;overflow-y:auto;background:var(--surface);border-radius:20px 20px 0 0;padding:18px 16px calc(20px + var(--safe-bottom));border-top:1px solid rgba(242,183,5,.3);animation:sheetUp .32s cubic-bezier(.34,1.56,.64,1) both;}
-@keyframes sheetUp{0%{transform:translateY(100%);}100%{transform:translateY(0);}}
-.modal-sheet h3{font-family:var(--font-head);color:var(--mustard);margin:0 0 14px;font-size:1.15rem;display:flex;justify-content:space-between;align-items:center;}
-.modal-sheet h3 .x-close{background:rgba(120,120,120,.15);border:none;color:var(--text);width:30px;height:30px;border-radius:50%;font-size:.9rem;cursor:pointer;}
-
-.status-popup{
-  position:fixed;top:calc(14px + var(--safe-top));left:12px;right:12px;z-index:9996;
-  background:linear-gradient(135deg,var(--brick-light),var(--brick-dark));border-radius:16px;padding:14px;color:#fff;
-  box-shadow:0 12px 30px rgba(0,0,0,.5);animation:popDown .4s cubic-bezier(.34,1.56,.64,1) both;border:1px solid rgba(242,183,5,.4);
-  cursor:pointer;
+/* ===================== PROFILE / SETTINGS VIEW ===================== */
+.settings-item{
+  background:var(--surface); color:var(--text); border-radius:14px; padding:14px 16px; margin-bottom:10px;
+  display:flex; align-items:center; gap:10px; box-shadow:var(--shadow);
 }
-@keyframes popDown{0%{opacity:0;transform:translateY(-30px) scale(.9);}100%{opacity:1;transform:translateY(0) scale(1);}}
-.status-popup h4{margin:0 0 4px;font-size:.9rem;display:flex;align-items:center;gap:6px;}
-.status-popup p{margin:0;font-size:.75rem;opacity:.9;}
+.settings-item .ic{ font-size:18px; width:26px; }
+.settings-item .lbl{ flex:1; font-size:13.5px; font-weight:700; }
+.toggle{ width:44px; height:26px; border-radius:20px; background:#ccc; position:relative; transition:background .2s ease; }
+.toggle.on{ background:var(--brick); }
+.toggle::after{ content:''; position:absolute; top:3px; left:3px; width:20px; height:20px; border-radius:50%; background:#fff; transition:transform .2s ease; }
+.toggle.on::after{ transform:translateX(18px); }
 
-@media(min-width:720px){
-  main{max-width:760px;}
+.prev-order-card{
+  background:var(--surface); color:var(--text); border-radius:14px; padding:13px; margin-bottom:10px; box-shadow:var(--shadow);
+  display:flex; justify-content:space-between; align-items:center;
 }
-@media (prefers-reduced-motion: reduce){
-  *{animation-duration:.01ms !important;animation-iteration-count:1 !important;transition-duration:.01ms !important;}
-}
+.prev-order-card .l h5{ font-size:13.5px; font-weight:800; }
+.prev-order-card .l p{ font-size:11px; color:var(--text-muted); margin-top:2px;}
+.status-pill{ font-size:10px; font-weight:800; padding:4px 9px; border-radius:20px; text-transform:uppercase;}
+.status-Pending{ background:#FFF3CD; color:#856404; }
+.status-Accepted{ background:#D1ECF1; color:#0C5460; }
+.status-Preparing{ background:#FBC02D; color:#1A1A1A; }
+.status-Ready{ background:#D4EDDA; color:#155724; }
+.status-Completed{ background:#8B2E1A; color:#fff; }
+.status-Cancelled{ background:#f5c6cb; color:#721c24; }
+
+.hidden{ display:none !important; }
 </style>
 </head>
 <body>
 
-<!-- ================= SPLASH SCREEN ================= -->
+<!-- ===================== SPLASH SCREEN ===================== -->
 <div id="splash">
-  <img src="https://i.ibb.co/GQ48tKry/Untitled475-20260710010108.png" alt="Pet Puja Logo">
-  <h1>Pet Puja</h1>
-  <p>Fresh Chai & Snacks, Ordered Easy</p>
-  <div class="splash-loader"></div>
-  <div class="splash-ver">v1.0.0</div>
+  <img src="https://i.ibb.co/GQ48tKry/Untitled475-20260710010108.png" alt="Pet Puja">
+  <h1>PET PUJA</h1>
+  <p>Retro Indian Street Food</p>
+  <div class="spin"></div>
 </div>
 
-<!-- ================= APP SHELL ================= -->
+<div class="conn-badge" id="connBadge"><span class="conn-dot" id="connDot"></span><span id="connText">Offline</span></div>
+
+<!-- ===================== MAIN APP ===================== -->
 <div id="app">
-  <header class="topbar">
+
+  <div class="topbar">
     <img class="logo" src="https://i.ibb.co/GQ48tKry/Untitled475-20260710010108.png" alt="logo">
-    <div class="titles">
-      <h1 id="shopNameHeader">Pet Puja</h1>
-      <div class="sub" id="topSubText">Order tasty food nearby</div>
+    <div class="title">
+      <h1 id="shopNameTop">PET PUJA</h1>
+      <span>Retro Street Food</span>
     </div>
-    <button class="icon-btn" id="cartIconBtn" title="Cart">🛒<span class="badge hidden" id="cartBadge">0</span></button>
-  </header>
-
-  <main id="mainContent"><!-- pages injected by JS --></main>
-
-  <nav class="bottom-nav">
-    <button class="nav-btn active" data-page="home"><span class="ni">🏠</span>Home</button>
-    <button class="nav-btn" data-page="menu"><span class="ni">🍽️</span>Menu</button>
-    <button class="nav-btn" data-page="orders"><span class="ni">🧾</span>Orders<span class="nbadge hidden" id="ordersNavBadge">0</span></button>
-    <button class="nav-btn" data-page="profile"><span class="ni">👤</span>Profile</button>
-  </nav>
-</div>
-
-<div id="toastWrap"></div>
-
-<div id="installBanner" class="hidden">
-  <span style="font-size:1.6rem;">📲</span>
-  <div class="ib-text">
-    <b>Install Pet Puja</b>
-    <span>Add to home screen for faster ordering</span>
+    <button class="icon-btn" id="darkToggleBtn">&#9789;</button>
+    <button class="icon-btn" data-nav="orders">&#128221;<span class="dot" id="orderDot"></span></button>
   </div>
-  <button class="ib-close" id="installBannerClose">✕</button>
+
+  <div class="announce-banner" id="announceBanner">
+    <span class="ic">&#128276;</span><span id="announceText"></span>
+  </div>
+
+  <!-- ============ HOME / MENU VIEW ============ -->
+  <div class="view active" id="view-home">
+    <div class="shop-hero">
+      <img src="https://i.ibb.co/GQ48tKry/Untitled475-20260710010108.png" alt="logo">
+      <div class="info">
+        <h2 id="shopNameHero">Pet Puja</h2>
+        <p id="shopHoursHero">Authentic Retro Street Food</p>
+        <div class="hours" id="shopAddressHero"></div>
+      </div>
+    </div>
+
+    <div class="quick-actions">
+      <button class="qa-btn" id="callBtn"><span class="ic">&#128222;</span>Call Shop</button>
+      <button class="qa-btn" id="mapsBtn"><span class="ic">&#128205;</span>Directions</button>
+      <button class="qa-btn" data-nav="orders"><span class="ic">&#128337;</span>My Orders</button>
+    </div>
+
+    <div class="search-bar">
+      <span class="ic">&#128269;</span>
+      <input type="text" id="searchInput" placeholder="Search for dishes...">
+    </div>
+
+    <div id="menuList"></div>
+    <div class="empty-state hidden" id="menuEmpty">
+      <div class="ic">&#127860;</div>
+      <p>Menu is being updated. Please check back shortly!</p>
+    </div>
+  </div>
+
+  <!-- ============ CART VIEW ============ -->
+  <div class="view" id="view-cart">
+    <div class="section-head">
+      <h2>Your Cart</h2>
+      <button class="back-btn" data-nav="home">&#8592; Back</button>
+    </div>
+    <div id="cartList"></div>
+    <div class="empty-state hidden" id="cartEmpty">
+      <div class="ic">&#128722;</div>
+      <p>Your cart is empty. Add some tasty items!</p>
+    </div>
+
+    <div class="checkout-box hidden" id="checkoutBox">
+      <h3>Delivery Details</h3>
+      <div class="field"><label>Your Name</label><input type="text" id="custName" placeholder="Enter your name"></div>
+      <div class="field"><label>Phone Number</label><input type="tel" id="custPhone" placeholder="10-digit mobile number"></div>
+      <div class="field"><label>Note (optional)</label><textarea id="custNote" rows="2" placeholder="e.g. Less spicy, extra chutney"></textarea></div>
+      <div class="field">
+        <label>Payment Method</label>
+        <div class="pay-options" style="margin-top:8px;">
+          <button class="pay-opt active" data-pay="Cash">&#128181; Cash</button>
+          <button class="pay-opt" data-pay="UPI">&#128241; UPI</button>
+          <button class="pay-opt" data-pay="Card">&#128179; Card</button>
+        </div>
+      </div>
+      <div class="total-row"><span>Total Amount</span><span id="cartTotal">₹0</span></div>
+      <button class="btn btn-yellow" id="placeOrderBtn" style="color:#1A1A1A;">Place Order</button>
+    </div>
+  </div>
+
+  <!-- ============ ORDERS / TRACKING VIEW ============ -->
+  <div class="view" id="view-orders">
+    <div class="section-head">
+      <h2>My Orders</h2>
+      <button class="back-btn" data-nav="home">&#8592; Back</button>
+    </div>
+    <div id="activeOrdersList"></div>
+    <div class="empty-state hidden" id="ordersEmpty">
+      <div class="ic">&#128221;</div>
+      <p>No orders yet. Place your first order from the menu!</p>
+    </div>
+
+    <h3 style="font-size:14px;margin:20px 0 10px;color:#ccc;">Previous Orders</h3>
+    <div id="prevOrdersList"></div>
+  </div>
+
+  <!-- ============ FEEDBACK VIEW ============ -->
+  <div class="view" id="view-feedback">
+    <div class="section-head">
+      <h2>Rate Your Experience</h2>
+      <button class="back-btn" data-nav="orders">&#8592; Back</button>
+    </div>
+    <div class="checkout-box">
+      <h3 id="feedbackOrderLabel">How was your order?</h3>
+      <div class="star-picker" id="starPicker">
+        <span data-val="1">&#9733;</span><span data-val="2">&#9733;</span><span data-val="3">&#9733;</span><span data-val="4">&#9733;</span><span data-val="5">&#9733;</span>
+      </div>
+      <div class="field"><label>Your Name</label><input type="text" id="fbName" placeholder="Enter your name"></div>
+      <div class="field"><label>Message</label><textarea id="fbMessage" rows="3" placeholder="Tell us about your experience..."></textarea></div>
+      <button class="btn btn-yellow" id="submitFeedbackBtn" style="color:#1A1A1A;">Submit Feedback</button>
+    </div>
+  </div>
+
+  <!-- ============ PROFILE / SETTINGS VIEW ============ -->
+  <div class="view" id="view-profile">
+    <div class="section-head">
+      <h2>More</h2>
+      <button class="back-btn" data-nav="home">&#8592; Back</button>
+    </div>
+    <div class="settings-item">
+      <div class="ic">&#127760;</div><div class="lbl">Dark Mode</div>
+      <div class="toggle" id="darkModeToggle"></div>
+    </div>
+    <div class="settings-item" id="shopInfoRow">
+      <div class="ic">&#127968;</div><div class="lbl" id="shopInfoText">Shop Information</div>
+    </div>
+    <div class="settings-item" id="clearHistoryRow">
+      <div class="ic">&#128465;</div><div class="lbl">Clear Order History</div>
+    </div>
+    <div class="settings-item">
+      <div class="ic">&#8505;</div><div class="lbl">App Version</div><span style="font-size:12px;color:var(--text-muted);">1.0.0</span>
+    </div>
+  </div>
+
 </div>
 
-<div id="modalRoot"></div>
+<!-- ===================== BOTTOM NAV ===================== -->
+<div class="bottom-nav" id="bottomNav">
+  <button class="nav-btn active" data-nav="home"><span class="ic">&#8962;</span>Menu</button>
+  <button class="nav-btn" data-nav="cart"><span class="ic">&#128722;</span>Cart</button>
+  <button class="nav-btn" data-nav="orders"><span class="ic">&#128221;</span>Orders</button>
+  <button class="nav-btn" data-nav="profile"><span class="ic">&#9776;</span>More</button>
+</div>
+
+<!-- ===================== ITEM DETAIL MODAL ===================== -->
+<div class="modal-overlay" id="itemModalOverlay">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <img class="detail-img" id="detailImg" src="" alt="">
+    <h3 id="detailName"></h3>
+    <p id="detailDesc" style="font-size:13px;color:var(--text-muted);margin-top:6px;"></p>
+    <div style="font-size:20px;font-weight:800;color:#8B2E1A;margin-top:10px;" id="detailPrice"></div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" id="detailCancelBtn">Close</button>
+      <button class="btn btn-yellow" id="detailAddBtn" style="color:#1A1A1A;">Add to Cart</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== INSTALL BANNER ===================== -->
+<div id="installBanner">
+  <img src="https://i.ibb.co/GQ48tKry/Untitled475-20260710010108.png" alt="logo">
+  <div class="txt"><strong>Install Pet Puja</strong><span>Add to home screen for quick ordering</span></div>
+  <button class="go" id="installGoBtn">Install</button>
+  <button class="close" id="installCloseBtn">&times;</button>
+</div>
+
+<div id="toast"></div>
+
+<!-- ===================== FIREBASE CDN ===================== -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 
 <script>
-/* ================================================================
-   PET PUJA CUSTOMER — APPLICATION SCRIPT
-   Modules:
-     1. Config & Constants
-     2. Storage Layer (DB)
-     3. Sync Bridge (peer-to-peer JSON sync w/ hidden daily key)
-     4. Utility helpers
-     5. Splash / Boot
-     6. Router / Navigation
-     7. Page Renderers (Home, Menu, Cart/Checkout, Confirmation,
-        Order Tracking, Orders History, Profile/Settings)
-     8. Cart logic
-     9. Install banner + PWA (manifest + service worker via Blob)
-     10. Boot sequence
-   ================================================================ */
-(function(){
-"use strict";
-
 /* ============================================================
-   1. CONFIG & CONSTANTS
+   PET PUJA CUSTOMER APP — MAIN SCRIPT
    ============================================================ */
-const APP_NAME = "Pet Puja Customer";
-const APP_VERSION = "1.0.0";
-const LOGO_URL = "https://i.ibb.co/GQ48tKry/Untitled475-20260710010108.png";
-const STORAGE_KEY = "petpuja_customer_db_v1";
-const SYNC_CHANNEL_NAME = "petpuja_sync_channel"; // must match Owner app's channel
-const STATUS_LIST = ["Pending","Accepted","Preparing","Ready","Completed","Cancelled"];
-const STATUS_META = {
-  Pending:{ic:"⏳",sub:"Waiting for shop to accept"},
-  Accepted:{ic:"👍",sub:"Order accepted by shop"},
-  Preparing:{ic:"👨‍🍳",sub:"Freshly being prepared"},
-  Ready:{ic:"🔔",sub:"Ready for pickup/serving"},
-  Completed:{ic:"✅",sub:"Order completed. Enjoy!"},
-  Cancelled:{ic:"❌",sub:"Order was cancelled"}
-};
-const WAIT_TIME_MIN = 10, WAIT_TIME_MAX = 25;
 
-/* ============================================================
-   2. STORAGE LAYER (simple localStorage "DB")
-   ============================================================ */
-const DB = {
-  _data:null,
-  defaultData(){
-    return {
-      meta:{version:APP_VERSION, createdAt:Date.now()},
-      shop:{
-        name:"Pet Puja Tea Stall",
-        phone:"+91 60090 36270",
-        location:"Kumarghat",
-        mapsLink:"https://maps.google.com/?q=Kumarghat",
-        isOpen:true
-      },
-      menu:[
-        {id:"m1", name:"Masala Chai", description:"Classic spiced tea brewed fresh", category:"Tea", price:15, image:"", available:true, order:0},
-        {id:"m2", name:"Samosa", description:"Crispy potato-stuffed pastry", category:"Snacks", price:20, image:"", available:true, order:1},
-        {id:"m3", name:"Bun Maska", description:"Soft bun with butter", category:"Snacks", price:25, image:"", available:true, order:2}
-      ],
-      announcements:[],
-      orders:[],          // customer's own order history
-      feedback:[],
-      profile:{name:"", mobile:""},
-      settings:{notificationsEnabled:true, darkMode:true},
-      cart:[]              // [{itemId, qty}]
-    };
-  },
-  load(){
-    try{
-      const raw = localStorage.getItem(STORAGE_KEY);
-      this._data = raw ? JSON.parse(raw) : this.defaultData();
-      // ensure new fields exist if loading an older save
-      const def = this.defaultData();
-      this._data = Object.assign({}, def, this._data);
-      this._data.shop = Object.assign({}, def.shop, this._data.shop||{});
-      this._data.settings = Object.assign({}, def.settings, this._data.settings||{});
-      this._data.profile = Object.assign({}, def.profile, this._data.profile||{});
-    }catch(e){
-      console.warn("DB load failed, using defaults", e);
-      this._data = this.defaultData();
-    }
-    return this._data;
-  },
-  save(){
-    try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(this._data)); return true; }
-    catch(e){ console.error("DB save failed", e); return false; }
-  },
-  get(){ return this._data; }
+/* -------------------- 1. FIREBASE CONFIG --------------------
+   PASTE THE SAME FIREBASE CONFIG USED IN THE OWNER APP.
+   Both apps must point to the same Firebase project/database
+   so orders, menu, and feedback sync live between them.
+---------------------------------------------------------------*/
+const firebaseConfig = {
+  apiKey: "PASTE_YOUR_API_KEY_HERE",
+  authDomain: "PASTE_YOUR_PROJECT.firebaseapp.com",
+  databaseURL: "https://PASTE_YOUR_PROJECT-default-rtdb.firebaseio.com",
+  projectId: "PASTE_YOUR_PROJECT_ID",
+  storageBucket: "PASTE_YOUR_PROJECT.appspot.com",
+  messagingSenderId: "PASTE_YOUR_SENDER_ID",
+  appId: "PASTE_YOUR_APP_ID"
 };
 
-/* ============================================================
-   3. SYNC BRIDGE — hidden daily key + peer-to-peer JSON sync
-   ------------------------------------------------------------
-   Mirrors the Owner app's SyncBridge exactly so both apps agree
-   on the same daily key and payload shape. The `transport`
-   object is the only piece to swap when moving to Firebase /
-   Supabase / REST later.
-   ============================================================ */
-const SyncBridge = (function(){
-  const MONTHS = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"];
-  function generateDailyKey(date){
-    date = date || new Date();
-    const dd = String(date.getDate()).padStart(2,"0");
-    const mon = MONTHS[date.getMonth()];
-    const yyyy = date.getFullYear();
-    return `${dd}${mon}${yyyy}`; // e.g. 10JUL2026
-  }
-  let dailyKey = generateDailyKey();
-  let bc = null;
-  try{ if("BroadcastChannel" in window){ bc = new BroadcastChannel(SYNC_CHANNEL_NAME); } }catch(e){ bc = null; }
+/* -------------------- 2. FIREBASE INIT -------------------- */
+let db = null;
+let firebaseReady = false;
+try{
+  firebase.initializeApp(firebaseConfig);
+  db = firebase.database();
+  firebaseReady = true;
+}catch(e){
+  console.error("Firebase init failed. Please paste a valid config.", e);
+}
 
-  const transport = {
-    send(payload){
-      try{
-        if(bc) bc.postMessage(payload);
-        localStorage.setItem("petpuja_sync_ping", JSON.stringify(payload));
-      }catch(e){ console.warn("Sync send failed", e); }
-    },
-    onReceive(cb){
-      if(bc){ bc.onmessage = (ev)=> cb(ev.data); }
-      window.addEventListener("storage",(ev)=>{
-        if(ev.key==="petpuja_sync_ping" && ev.newValue){
-          try{ cb(JSON.parse(ev.newValue)); }catch(e){}
-        }
-      });
-    }
-  };
+/* -------------------- 3. STATE -------------------- */
+let state = {
+  menu: {},
+  settings: { shopName:"Pet Puja", phone:"", address:"", maps:"", hours:"" },
+  announcements: {},
+  ordersFromServer: {} // key -> order object, filtered locally by stored order keys
+};
+let cart = {}; // menuKey -> {name, price, image, qty}
+let selectedPayment = "Cash";
+let selectedRating = 0;
+let feedbackTargetOrderKey = null;
+let deferredInstallPrompt = null;
 
-  function buildPayload(type,data){
-    return { syncKey:dailyKey, type, data, ts:Date.now(), app:"Pet Puja Management", srcApp:APP_NAME, version:APP_VERSION };
-  }
-  function broadcast(type,data){
-    transport.send(buildPayload(type,data));
-  }
-  function listen(handler){
-    transport.onReceive((payload)=>{
-      if(!payload || payload.syncKey!==dailyKey) return;
-      // Accept payloads coming from either app; ignore anything
-      // not carrying today's key (basic freshness/integrity check).
-      handler(payload);
-    });
-  }
-  function scheduleKeyRotation(){
-    const now=new Date();
-    const nextMidnight=new Date(now.getFullYear(),now.getMonth(),now.getDate()+1,0,1,0);
-    setTimeout(()=>{ dailyKey=generateDailyKey(); scheduleKeyRotation(); }, nextMidnight-now);
-  }
-  scheduleKeyRotation();
+const LS_ORDER_KEYS = "petpuja_customer_order_keys"; // array of order push-keys this customer placed
+const LS_DARK_MODE = "petpuja_customer_dark_mode";
+const LS_CART = "petpuja_customer_cart";
 
-  return{ getKey:()=>dailyKey, broadcast, listen, transport };
-})();
-
-/* ============================================================
-   4. UTILITY HELPERS
-   ============================================================ */
-function uid(prefix){ return (prefix||"id")+"_"+Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
-function escapeHtml(str){
-  if(str===undefined||str===null) return "";
-  return String(str).replace(/[&<>"']/g,(c)=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+/* -------------------- 4. UTILITIES -------------------- */
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(()=> t.classList.remove('show'), 2400);
 }
 function fmtTime(ts){
-  const d=new Date(ts);
-  return d.toLocaleDateString(undefined,{day:"2-digit",month:"short"})+" "+d.toLocaleTimeString(undefined,{hour:"2-digit",minute:"2-digit"});
+  if(!ts) return '';
+  const d = new Date(ts);
+  return d.toLocaleString([], {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'});
 }
-function toast(msg,ms){
-  const wrap=document.getElementById("toastWrap");
-  const el=document.createElement("div");
-  el.className="toast"; el.textContent=msg;
-  wrap.appendChild(el);
-  setTimeout(()=>el.remove(), ms||3000);
+function escapeHtml(str){
+  if(!str) return '';
+  return String(str).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 }
-function openModal(html){
-  const root=document.getElementById("modalRoot");
-  const overlay=document.createElement("div");
-  overlay.className="modal-overlay";
-  overlay.innerHTML=`<div class="modal-sheet">${html}</div>`;
-  overlay.addEventListener("click",(e)=>{ if(e.target===overlay) closeModal(); });
-  root.innerHTML=""; root.appendChild(overlay);
-  return overlay;
+function getMyOrderKeys(){
+  try{ return JSON.parse(localStorage.getItem(LS_ORDER_KEYS)) || []; }catch(e){ return []; }
 }
-function closeModal(){ document.getElementById("modalRoot").innerHTML=""; }
-
-/* ============================================================
-   5. SPLASH / BOOT-IN
-   ============================================================ */
-function initSplashThenHome(){
-  const splash=document.getElementById("splash");
-  setTimeout(()=>{
-    splash.classList.add("fade-out");
-    setTimeout(()=>{
-      splash.style.display="none";
-      showApp();
-    },600);
-  },1500);
+function saveMyOrderKey(key){
+  const keys = getMyOrderKeys();
+  if(!keys.includes(key)){ keys.unshift(key); localStorage.setItem(LS_ORDER_KEYS, JSON.stringify(keys)); }
 }
 
-function showApp(){
-  applyTheme();
-  document.getElementById("app").classList.add("active");
-  applyShopBranding();
-  Router.go("home");
-  startSyncListeners();
-  requestMenuFromOwner();
-  updateCartBadge();
-  updateOrdersNavBadge();
+/* -------------------- 5. CONNECTION STATUS + AUTO RECONNECT -------------------- */
+function setConnStatus(on){
+  document.getElementById('connDot').classList.toggle('on', on);
+  document.getElementById('connText').textContent = on ? 'Online' : 'Offline';
 }
+if(firebaseReady){
+  db.ref(".info/connected").on("value", (snap)=>{
+    setConnStatus(snap.val() === true);
+  });
+}
+window.addEventListener('online', ()=> toast('Back online — syncing...'));
+window.addEventListener('offline', ()=> toast('Offline. Reconnecting automatically...'));
 
-/* ============================================================
-   6. ROUTER / NAVIGATION
-   ============================================================ */
-const Router = {
-  current:"home",
-  go(page, params){
-    this.current = page;
-    this.params = params||{};
-    document.querySelectorAll(".nav-btn").forEach(b=>{
-      b.classList.toggle("active", b.dataset.page===page);
-    });
-    const main=document.getElementById("mainContent");
-    main.innerHTML="";
-    main.appendChild(Pages[page](this.params));
-    window.scrollTo({top:0,behavior:"smooth"});
-    renderCartBar();
-  }
-};
-document.querySelectorAll(".nav-btn").forEach(btn=>{
-  btn.addEventListener("click", ()=> Router.go(btn.dataset.page));
+/* -------------------- 6. NAVIGATION -------------------- */
+document.querySelectorAll('[data-nav]').forEach(btn=>{
+  btn.addEventListener('click', ()=> navigateTo(btn.getAttribute('data-nav')));
 });
-document.getElementById("cartIconBtn").addEventListener("click", ()=> Router.go("cart"));
-
-function applyShopBranding(){
-  const shop = DB.get().shop;
-  document.getElementById("shopNameHeader").textContent = shop.name || APP_NAME;
-  document.getElementById("topSubText").textContent = shop.isOpen ? "🟢 Open now" : "🔴 Closed now";
-}
-function applyTheme(){
-  const dark = DB.get().settings.darkMode;
-  document.body.classList.toggle("light-mode", !dark);
+function navigateTo(name){
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.getElementById('view-'+name).classList.add('active');
+  document.querySelectorAll('.nav-btn').forEach(n=>{
+    n.classList.toggle('active', n.getAttribute('data-nav')===name);
+  });
+  window.scrollTo(0,0);
 }
 
-/* ============================================================
-   7. PAGE RENDERERS
-   ============================================================ */
-const Pages = {};
-function pageEl(){ return document.createElement("div"); }
-function subPageHeader(title){
-  const wrap=document.createElement("div");
-  wrap.className="page-head";
-  wrap.innerHTML=`<button class="back-btn">←</button><h2>${title}</h2>`;
-  wrap.querySelector(".back-btn").addEventListener("click", ()=> Router.go("home"));
-  return wrap;
+/* -------------------- 7. DARK MODE -------------------- */
+function applyDarkMode(on){
+  document.body.classList.toggle('dark', on);
+  document.getElementById('darkModeToggle').classList.toggle('on', on);
+  localStorage.setItem(LS_DARK_MODE, on ? '1' : '0');
 }
+document.getElementById('darkToggleBtn').addEventListener('click', ()=>{
+  applyDarkMode(!document.body.classList.contains('dark'));
+});
+document.getElementById('darkModeToggle').addEventListener('click', ()=>{
+  applyDarkMode(!document.body.classList.contains('dark'));
+});
+applyDarkMode(localStorage.getItem(LS_DARK_MODE) === '1');
 
-/* ---------------- HOME PAGE ---------------- */
-Pages.home = function(){
-  const el = pageEl();
-  const data = DB.get();
-  const shop = data.shop;
-
-  el.innerHTML = `
-    <div class="hero-card">
-      <img src="${LOGO_URL}" alt="logo">
-      <h2>Namaste! 🙏</h2>
-      <p>Welcome to ${escapeHtml(shop.name)}</p>
-      <div class="shop-status ${shop.isOpen?'':'closed'}">
-        <span class="dot"></span> ${shop.isOpen?"Open Now":"Currently Closed"}
-      </div>
-    </div>
-
-    <div class="action-row">
-      <button class="action-btn" id="callShopBtn"><span class="ic">📞</span><span class="lbl">Call Shop</span></button>
-      <button class="action-btn" id="mapsShopBtn"><span class="ic">📍</span><span class="lbl">Get Directions</span></button>
-    </div>
-
-    <div class="conn-indicator" id="connIndicator">
-      <span class="pulse"></span>
-      <span id="connText">Connected • Live menu sync</span>
-    </div>
-
-    <div id="announcementsWrap"></div>
-
-    <button class="big-cta" id="viewMenuBtn">🍽️ View Menu & Order</button>
-  `;
-
-  el.querySelector("#callShopBtn").addEventListener("click", ()=>{
-    window.location.href = `tel:${shop.phone.replace(/\s/g,"")}`;
-  });
-  el.querySelector("#mapsShopBtn").addEventListener("click", ()=>{
-    window.open(shop.mapsLink, "_blank");
-  });
-  el.querySelector("#viewMenuBtn").addEventListener("click", ()=> Router.go("menu"));
-
-  // Announcements
-  const annWrap = el.querySelector("#announcementsWrap");
-  if(data.announcements.length){
-    const title = document.createElement("div");
-    title.className="section-title";
-    title.innerHTML=`📢 Announcements`;
-    annWrap.appendChild(title);
-    [...data.announcements].sort((a,b)=>b.createdAt-a.createdAt).slice(0,5).forEach(a=>{
-      const card=document.createElement("div");
-      card.className="announce-card";
-      card.innerHTML=`<h5>${escapeHtml(a.title)}</h5><p>${escapeHtml(a.message)}</p><small>${fmtTime(a.createdAt)}</small>`;
-      annWrap.appendChild(card);
-    });
-  }
-
-  updateConnIndicator(el.querySelector("#connIndicator"), el.querySelector("#connText"));
-  return el;
-};
-
-function updateConnIndicator(indicatorEl, textEl){
-  if(!indicatorEl) return;
-  const online = navigator.onLine;
-  indicatorEl.classList.toggle("offline", !online);
-  textEl.textContent = online ? "Connected • Live menu sync" : "Offline • showing saved menu";
-}
-
-/* ---------------- MENU PAGE ---------------- */
-Pages.menu = function(){
-  const el = pageEl();
-  el.appendChild(subPageHeader("🍽️ Menu"));
-
-  const searchWrap = document.createElement("div");
-  searchWrap.className="search-bar";
-  searchWrap.innerHTML = `<span class="ic">🔍</span><input type="text" id="menuSearch" placeholder="Search for tea, samosa...">`;
-  el.appendChild(searchWrap);
-
-  const data = DB.get();
-  const cats = ["All", ...new Set(data.menu.map(m=>m.category))];
-  const catScroll = document.createElement("div");
-  catScroll.className="cat-scroll";
-  cats.forEach(c=>{
-    const chip=document.createElement("button");
-    chip.className="cat-chip"+(c==="All"?" active":"");
-    chip.textContent=c;
-    chip.dataset.cat=c;
-    catScroll.appendChild(chip);
-  });
-  el.appendChild(catScroll);
-
-  const list = document.createElement("div");
-  list.id="menuListWrap";
-  el.appendChild(list);
-
-  let activeCat="All", query="";
-  function refresh(){
-    renderMenuItems(list, activeCat, query);
-  }
-  searchWrap.querySelector("#menuSearch").addEventListener("input",(e)=>{
-    query = e.target.value.trim().toLowerCase();
-    refresh();
-  });
-  catScroll.addEventListener("click",(e)=>{
-    const chip = e.target.closest(".cat-chip");
-    if(!chip) return;
-    catScroll.querySelectorAll(".cat-chip").forEach(c=>c.classList.remove("active"));
-    chip.classList.add("active");
-    activeCat = chip.dataset.cat;
-    refresh();
-  });
-
-  refresh();
-  return el;
-};
-
-function renderMenuItems(container, cat, query){
-  const data = DB.get();
-  let items = [...data.menu].sort((a,b)=>a.order-b.order);
-  if(cat && cat!=="All") items = items.filter(i=>i.category===cat);
-  if(query) items = items.filter(i=> i.name.toLowerCase().includes(query) || (i.description||"").toLowerCase().includes(query));
-  container.innerHTML="";
-  if(!items.length){
-    container.innerHTML = `<div class="empty-state"><div class="em">🍽️</div><p>No items found.</p></div>`;
+/* -------------------- 8. INIT APP DATA (Firebase listeners) -------------------- */
+function initAppData(){
+  if(!firebaseReady){
+    toast('Firebase config missing — please paste your config in the code.');
     return;
   }
-  items.forEach(item=>{
-    const card = document.createElement("div");
-    card.className = "menu-card"+(item.available?"":" unavailable");
-    const inCart = data.cart.find(c=>c.itemId===item.id);
-    const qty = inCart?inCart.qty:0;
-    card.innerHTML = `
-      ${item.image?`<img src="${escapeHtml(item.image)}" alt="">`:`<div style="width:64px;height:64px;border-radius:12px;background:rgba(242,183,5,.12);display:flex;align-items:center;justify-content:center;font-size:1.5rem;flex-shrink:0;">🍵</div>`}
-      <div class="info">
-        <h4>${escapeHtml(item.name)}</h4>
-        <p>${escapeHtml(item.description||"")}</p>
-        <div class="row-bottom">
-          <span class="price-tag">₹${item.price}</span>
-          ${item.available ? `<div class="cart-controls" data-id="${item.id}">
-            ${qty>0 ? `
-              <div class="qty-ctrl">
-                <button class="minus-b">−</button>
-                <span>${qty}</span>
-                <button class="plus-b">+</button>
-              </div>
-            ` : `<button class="add-cart-btn">+ Add</button>`}
-          </div>` : `<span class="unavail-badge">Unavailable</span>`}
-        </div>
-      </div>
-    `;
-    if(item.available){
-      const controls = card.querySelector(".cart-controls");
-      if(qty>0){
-        controls.querySelector(".plus-b").addEventListener("click", ()=>{ changeCartQty(item.id, 1); renderMenuItems(container, currentCatFilter(container), currentQuery(container)); });
-        controls.querySelector(".minus-b").addEventListener("click", ()=>{ changeCartQty(item.id, -1); renderMenuItems(container, currentCatFilter(container), currentQuery(container)); });
-      }else{
-        controls.querySelector(".add-cart-btn").addEventListener("click", ()=>{
-          changeCartQty(item.id, 1);
-          toast(`${item.name} added to cart 🛒`);
-          renderMenuItems(container, currentCatFilter(container), currentQuery(container));
-        });
-      }
+  // MENU listener — live updates from owner app
+  db.ref('menu').on('value', snap=>{
+    state.menu = snap.val() || {};
+    renderMenu();
+  });
+  // SETTINGS / SHOP INFO listener
+  db.ref('settings').on('value', snap=>{
+    const s = snap.val();
+    if(s) state.settings = s;
+    applyShopInfo();
+  });
+  // ANNOUNCEMENTS listener — show latest
+  db.ref('announcements').orderByChild('ts').limitToLast(1).on('value', snap=>{
+    const val = snap.val();
+    if(val){
+      const latest = Object.values(val)[0];
+      document.getElementById('announceText').textContent = latest.message;
+      document.getElementById('announceBanner').classList.add('show');
     }
-    container.appendChild(card);
+  });
+  // ORDERS listener — track only this customer's orders (by locally stored keys)
+  db.ref('orders').on('value', snap=>{
+    state.ordersFromServer = snap.val() || {};
+    renderMyOrders();
+    updateOrderDot();
   });
 }
-// Helpers to preserve current filter state when re-rendering after qty change
-function currentCatFilter(container){
-  const scroll = container.parentElement.querySelector(".cat-scroll");
-  const active = scroll ? scroll.querySelector(".cat-chip.active") : null;
-  return active ? active.dataset.cat : "All";
-}
-function currentQuery(container){
-  const search = container.parentElement.querySelector("#menuSearch");
-  return search ? search.value.trim().toLowerCase() : "";
-}
 
-/* ============================================================
-   8. CART LOGIC
-   ============================================================ */
-function changeCartQty(itemId, delta){
-  const data = DB.get();
-  let entry = data.cart.find(c=>c.itemId===itemId);
-  if(!entry){
-    if(delta>0){ data.cart.push({itemId, qty:1}); }
-  }else{
-    entry.qty += delta;
-    if(entry.qty<=0){ data.cart = data.cart.filter(c=>c.itemId!==itemId); }
+/* -------------------- 9. SHOP INFO APPLY -------------------- */
+function applyShopInfo(){
+  const s = state.settings || {};
+  document.getElementById('shopNameTop').textContent = (s.shopName || 'Pet Puja').toUpperCase();
+  document.getElementById('shopNameHero').textContent = s.shopName || 'Pet Puja';
+  document.getElementById('shopHoursHero').textContent = s.hours ? ('Open: ' + s.hours) : 'Authentic Retro Street Food';
+  document.getElementById('shopAddressHero').textContent = s.address || '';
+  document.getElementById('shopInfoText').textContent = s.address ? ('Shop: ' + s.address) : 'Shop Information';
+}
+document.getElementById('callBtn').addEventListener('click', ()=>{
+  const phone = state.settings.phone;
+  if(!phone){ toast('Shop phone number not available'); return; }
+  window.location.href = 'tel:' + phone;
+});
+document.getElementById('mapsBtn').addEventListener('click', ()=>{
+  const maps = state.settings.maps;
+  if(!maps){ toast('Location link not available'); return; }
+  window.open(maps, '_blank');
+});
+
+/* -------------------- 10. MENU RENDER + SEARCH -------------------- */
+function renderMenu(){
+  const searchVal = document.getElementById('searchInput').value.toLowerCase().trim();
+  const list = document.getElementById('menuList');
+  let items = Object.entries(state.menu || {}).sort((a,b)=> (a[1].order||0) - (b[1].order||0));
+  if(searchVal){
+    items = items.filter(([k,item])=> (item.name||'').toLowerCase().includes(searchVal) || (item.desc||'').toLowerCase().includes(searchVal));
   }
-  DB.save();
-  updateCartBadge();
+  document.getElementById('menuEmpty').classList.toggle('hidden', items.length>0);
+
+  list.innerHTML = items.map(([key, item])=>{
+    const qty = cart[key] ? cart[key].qty : 0;
+    return `
+    <div class="menu-card">
+      <img src="${escapeHtml(item.image)}" alt="${escapeHtml(item.name)}" data-key="${key}" class="mc-img" onerror="this.src='https://via.placeholder.com/150/FBC02D/1A1A1A?text=Food'">
+      <div class="info" data-key="${key}">
+        <h4>${escapeHtml(item.name)}</h4>
+        <p>${escapeHtml(item.desc||'')}</p>
+        <div class="price">₹${item.price||0}</div>
+      </div>
+      <div class="add-area">
+        ${qty > 0 ? `
+          <div class="qty-control">
+            <button class="qty-minus" data-key="${key}">-</button>
+            <span>${qty}</span>
+            <button class="qty-plus" data-key="${key}">+</button>
+          </div>
+        ` : `<button class="add-btn" data-key="${key}">Add +</button>`}
+      </div>
+    </div>`;
+  }).join('');
+
+  list.querySelectorAll('.add-btn').forEach(b=> b.addEventListener('click', ()=> addToCart(b.getAttribute('data-key'))));
+  list.querySelectorAll('.qty-plus').forEach(b=> b.addEventListener('click', ()=> addToCart(b.getAttribute('data-key'))));
+  list.querySelectorAll('.qty-minus').forEach(b=> b.addEventListener('click', ()=> removeOneFromCart(b.getAttribute('data-key'))));
+  list.querySelectorAll('.mc-img, .info').forEach(el=> el.addEventListener('click', ()=> openItemDetail(el.getAttribute('data-key'))));
+}
+document.getElementById('searchInput').addEventListener('input', renderMenu);
+
+/* -------------------- 11. ITEM DETAIL MODAL -------------------- */
+let detailKey = null;
+function openItemDetail(key){
+  const item = state.menu[key];
+  if(!item) return;
+  detailKey = key;
+  document.getElementById('detailImg').src = item.image;
+  document.getElementById('detailImg').onerror = function(){ this.src='https://via.placeholder.com/300/FBC02D/1A1A1A?text=Food'; };
+  document.getElementById('detailName').textContent = item.name;
+  document.getElementById('detailDesc').textContent = item.desc || '';
+  document.getElementById('detailPrice').textContent = '₹' + item.price;
+  document.getElementById('itemModalOverlay').classList.add('show');
+}
+document.getElementById('detailCancelBtn').addEventListener('click', ()=> document.getElementById('itemModalOverlay').classList.remove('show'));
+document.getElementById('itemModalOverlay').addEventListener('click', (e)=>{ if(e.target.id==='itemModalOverlay') e.target.classList.remove('show'); });
+document.getElementById('detailAddBtn').addEventListener('click', ()=>{
+  if(detailKey){ addToCart(detailKey); document.getElementById('itemModalOverlay').classList.remove('show'); }
+});
+
+/* -------------------- 12. CART LOGIC -------------------- */
+function saveCart(){ localStorage.setItem(LS_CART, JSON.stringify(cart)); }
+function loadCart(){ try{ cart = JSON.parse(localStorage.getItem(LS_CART)) || {}; }catch(e){ cart = {}; } }
+loadCart();
+
+function addToCart(key){
+  const item = state.menu[key];
+  if(!item) return;
+  if(!cart[key]) cart[key] = { name:item.name, price:item.price, image:item.image, qty:0 };
+  cart[key].qty += 1;
+  saveCart();
+  renderMenu();
+  renderCartBar();
+  toast(item.name + ' added to cart');
+}
+function removeOneFromCart(key){
+  if(!cart[key]) return;
+  cart[key].qty -= 1;
+  if(cart[key].qty <= 0) delete cart[key];
+  saveCart();
+  renderMenu();
   renderCartBar();
 }
-
-function getCartDetailed(){
-  const data = DB.get();
-  return data.cart.map(c=>{
-    const item = data.menu.find(m=>m.id===c.itemId);
-    if(!item) return null;
-    return { ...item, qty:c.qty, lineTotal: item.price*c.qty };
-  }).filter(Boolean);
+function cartTotalAmount(){
+  return Object.values(cart).reduce((sum,it)=> sum + (it.price*it.qty), 0);
 }
-function cartTotal(){
-  return getCartDetailed().reduce((sum,i)=>sum+i.lineTotal,0);
+function cartItemCount(){
+  return Object.values(cart).reduce((sum,it)=> sum + it.qty, 0);
 }
-function cartCount(){
-  return DB.get().cart.reduce((sum,c)=>sum+c.qty,0);
-}
-function updateCartBadge(){
-  const badge=document.getElementById("cartBadge");
-  const count=cartCount();
-  if(count>0){ badge.textContent=count; badge.classList.remove("hidden"); }
-  else{ badge.classList.add("hidden"); }
-}
-
 function renderCartBar(){
-  const existing = document.getElementById("cartBar");
-  if(existing) existing.remove();
-  if(Router.current==="cart" || Router.current==="checkout") return;
-  const count = cartCount();
-  if(count<=0) return;
-  const bar = document.createElement("div");
-  bar.id="cartBar";
-  bar.innerHTML = `
-    <div class="cb-left"><b>${count} item${count>1?'s':''} in cart</b><span>Tap to view</span></div>
-    <div class="cb-right">₹${cartTotal()} →</div>
-  `;
-  bar.addEventListener("click", ()=> Router.go("cart"));
-  document.body.appendChild(bar);
-}
-
-/* ---------------- CART PAGE ---------------- */
-Pages.cart = function(){
-  const el = pageEl();
-  el.appendChild(subPageHeader("🛒 Your Cart"));
-  const items = getCartDetailed();
-
-  if(!items.length){
-    const empty = document.createElement("div");
-    empty.className="empty-state";
-    empty.innerHTML = `<div class="em">🛒</div><p>Your cart is empty. Add some tasty items!</p>`;
-    el.appendChild(empty);
-    const browseBtn=document.createElement("button");
-    browseBtn.className="btn btn-mustard btn-block";
-    browseBtn.textContent="🍽️ Browse Menu";
-    browseBtn.addEventListener("click", ()=> Router.go("menu"));
-    el.appendChild(browseBtn);
-    return el;
-  }
-
-  const list = document.createElement("div");
-  items.forEach(item=>{
-    const row = document.createElement("div");
-    row.className="cart-item";
-    row.innerHTML = `
-      ${item.image?`<img src="${escapeHtml(item.image)}" alt="">`:`<div style="width:48px;height:48px;border-radius:10px;background:rgba(242,183,5,.12);display:flex;align-items:center;justify-content:center;">🍵</div>`}
-      <div class="ci-info">
-        <h5>${escapeHtml(item.name)}</h5>
-        <span>₹${item.price} × ${item.qty} = ₹${item.lineTotal}</span>
-      </div>
-      <div class="qty-ctrl">
-        <button class="minus-b">−</button>
-        <span>${item.qty}</span>
-        <button class="plus-b">+</button>
-      </div>
-      <button class="remove-btn" title="Remove">🗑️</button>
-    `;
-    row.querySelector(".plus-b").addEventListener("click", ()=>{ changeCartQty(item.id,1); Router.go("cart"); });
-    row.querySelector(".minus-b").addEventListener("click", ()=>{ changeCartQty(item.id,-1); Router.go("cart"); });
-    row.querySelector(".remove-btn").addEventListener("click", ()=>{
-      const data=DB.get();
-      data.cart = data.cart.filter(c=>c.itemId!==item.id);
-      DB.save(); updateCartBadge();
-      toast("Item removed");
-      Router.go("cart");
-    });
-    list.appendChild(row);
-  });
-  el.appendChild(list);
-
-  const totalRow = document.createElement("div");
-  totalRow.className="total-row";
-  totalRow.innerHTML = `<span>Total</span><b>₹${cartTotal()}</b>`;
-  el.appendChild(totalRow);
-
-  const checkoutBtn = document.createElement("button");
-  checkoutBtn.className="btn btn-mustard btn-block";
-  checkoutBtn.textContent="Proceed to Checkout →";
-  checkoutBtn.addEventListener("click", ()=> Router.go("checkout"));
-  el.appendChild(checkoutBtn);
-
-  return el;
-};
-
-/* ---------------- CHECKOUT PAGE ---------------- */
-Pages.checkout = function(){
-  const el = pageEl();
-  el.appendChild(subPageHeader("📝 Checkout"));
-  const data = DB.get();
-  const items = getCartDetailed();
-
-  if(!items.length){
-    const empty = document.createElement("div");
-    empty.className="empty-state";
-    empty.innerHTML = `<div class="em">🛒</div><p>Your cart is empty.</p>`;
-    el.appendChild(empty);
-    return el;
-  }
-
-  const panel = document.createElement("div");
-  panel.className="panel";
-  panel.innerHTML = `
-    <div class="form-row">
-      <label>Your Name</label>
-      <input type="text" id="custName" value="${escapeHtml(data.profile.name||'')}" placeholder="Enter your name">
-    </div>
-    <div class="form-row">
-      <label>Mobile Number</label>
-      <input type="tel" id="custMobile" value="${escapeHtml(data.profile.mobile||'')}" placeholder="10-digit mobile number">
-    </div>
-    <div class="form-row">
-      <label>Table Number (Optional)</label>
-      <input type="text" id="custTable" placeholder="e.g. Table 4">
-    </div>
-    <div class="form-row">
-      <label>Notes (Optional)</label>
-      <textarea id="custNotes" placeholder="Any special request..."></textarea>
-    </div>
-  `;
-  el.appendChild(panel);
-
-  const payPanel = document.createElement("div");
-  payPanel.className="panel";
-  payPanel.innerHTML = `
-    <label style="display:block;font-size:.72rem;color:var(--mustard);margin-bottom:8px;font-weight:600;">Payment Method</label>
-    <div class="pay-options">
-      <div class="pay-opt active" data-pay="Cash"><span class="ic">💵</span>Cash</div>
-      <div class="pay-opt" data-pay="UPI"><span class="ic">📱</span>UPI</div>
-      <div class="pay-opt" data-pay="Card"><span class="ic">💳</span>Card</div>
-    </div>
-  `;
-  el.appendChild(payPanel);
-  let selectedPay = "Cash";
-  payPanel.querySelectorAll(".pay-opt").forEach(opt=>{
-    opt.addEventListener("click", ()=>{
-      payPanel.querySelectorAll(".pay-opt").forEach(o=>o.classList.remove("active"));
-      opt.classList.add("active");
-      selectedPay = opt.dataset.pay;
-    });
-  });
-
-  const summaryPanel = document.createElement("div");
-  summaryPanel.className="panel";
-  summaryPanel.innerHTML = `
-    <div style="font-size:.8rem;color:var(--text-dim);line-height:1.6;">
-      ${items.map(i=>`${escapeHtml(i.name)} × ${i.qty} — ₹${i.lineTotal}`).join("<br>")}
-    </div>
-    <div class="total-row"><span>Total Payable</span><b>₹${cartTotal()}</b></div>
-  `;
-  el.appendChild(summaryPanel);
-
-  const placeBtn = document.createElement("button");
-  placeBtn.className="btn btn-mustard btn-block";
-  placeBtn.textContent="✅ Place Order";
-  placeBtn.addEventListener("click", ()=>{
-    const name = panel.querySelector("#custName").value.trim();
-    const mobile = panel.querySelector("#custMobile").value.trim();
-    const table = panel.querySelector("#custTable").value.trim();
-    const notes = panel.querySelector("#custNotes").value.trim();
-    if(!name){ toast("Please enter your name"); return; }
-    if(!mobile || mobile.length<10){ toast("Please enter a valid mobile number"); return; }
-
-    // Save profile locally for next time
-    data.profile.name = name;
-    data.profile.mobile = mobile;
-
-    const orderNumber = Math.floor(1000+Math.random()*9000);
-    const waitTime = WAIT_TIME_MIN + Math.floor(Math.random()*(WAIT_TIME_MAX-WAIT_TIME_MIN));
-    const order = {
-      id: uid("o"),
-      orderNumber,
-      customerName: name,
-      mobile,
-      tableNumber: table,
-      notes,
-      items: items.map(i=>({itemId:i.id, name:i.name, price:i.price, qty:i.qty})),
-      total: cartTotal(),
-      paymentMethod: selectedPay,
-      status: "Pending",
-      estWaitMinutes: waitTime,
-      createdAt: Date.now(),
-      feedbackGiven:false
-    };
-    data.orders.push(order);
-    data.cart = [];
-    DB.save();
-    SyncBridge.broadcast("new_order", order);
-    updateCartBadge();
-    updateOrdersNavBadge();
-    toast("Order placed successfully! 🎉");
-    Router.go("confirmation", {orderId: order.id});
-  });
-  el.appendChild(placeBtn);
-
-  return el;
-};
-
-/* ---------------- CONFIRMATION PAGE ---------------- */
-Pages.confirmation = function(params){
-  const el = pageEl();
-  const data = DB.get();
-  const order = data.orders.find(o=>o.id===params.orderId);
-  if(!order){ Router.go("home"); return el; }
-
-  el.innerHTML = `
-    <div class="confirm-wrap">
-      <div class="confirm-icon">🎉</div>
-      <h2>Order Placed!</h2>
-      <p style="color:var(--text-dim);font-size:.85rem;">Thank you, ${escapeHtml(order.customerName)}</p>
-      <div class="ordno">#${order.orderNumber}</div>
-      <div class="wait-pill">⏱️ Estimated wait: ${order.estWaitMinutes} minutes</div>
-    </div>
-  `;
-  const trackBtn = document.createElement("button");
-  trackBtn.className="btn btn-mustard btn-block";
-  trackBtn.textContent="📍 Track My Order";
-  trackBtn.addEventListener("click", ()=> Router.go("track", {orderId:order.id}));
-  el.appendChild(trackBtn);
-
-  const homeBtn = document.createElement("button");
-  homeBtn.className="btn btn-outline btn-block";
-  homeBtn.textContent="🏠 Back to Home";
-  homeBtn.addEventListener("click", ()=> Router.go("home"));
-  el.appendChild(homeBtn);
-
-  return el;
-};
-
-/* ---------------- ORDER TRACKING PAGE ---------------- */
-Pages.track = function(params){
-  const el = pageEl();
-  el.appendChild(subPageHeader("📍 Track Order"));
-  const data = DB.get();
-  const order = data.orders.find(o=>o.id===params.orderId);
-  if(!order){
-    el.innerHTML += `<div class="empty-state"><div class="em">🧾</div><p>Order not found.</p></div>`;
-    return el;
-  }
-
-  const panel = document.createElement("div");
-  panel.className="panel";
-  panel.id="trackPanel";
-  panel.innerHTML = buildTrackPanelHTML(order);
-  el.appendChild(panel);
-
-  if(order.status==="Completed" && !order.feedbackGiven){
-    const fbBtn = document.createElement("button");
-    fbBtn.className="btn btn-mustard btn-block";
-    fbBtn.textContent="⭐ Rate Your Order";
-    fbBtn.addEventListener("click", ()=> openFeedbackModal(order));
-    el.appendChild(fbBtn);
-  }
-
-  return el;
-};
-
-function buildTrackPanelHTML(order){
-  const activeSteps = STATUS_LIST.filter(s=>s!=="Cancelled");
-  const isCancelled = order.status==="Cancelled";
-  const currentIdx = activeSteps.indexOf(order.status);
-
-  let stepsHtml = "";
-  if(isCancelled){
-    stepsHtml = `
-      <div class="track-step cancelled">
-        <div class="tdot">❌</div>
-        <div><div class="tlabel">Order Cancelled</div><div class="tsub">${STATUS_META.Cancelled.sub}</div></div>
-      </div>
-    `;
-  }else{
-    stepsHtml = activeSteps.map((s,i)=>{
-      const done = i<currentIdx;
-      const current = i===currentIdx;
-      const cls = done?"done":current?"current":"";
-      const icon = done?"✓":STATUS_META[s].ic;
-      return `
-        <div class="track-step ${cls}">
-          <div class="tdot">${icon}</div>
-          <div><div class="tlabel">${s}</div><div class="tsub">${STATUS_META[s].sub}</div></div>
-        </div>
-      `;
-    }).join("");
-  }
-
-  return `
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-      <div>
-        <div style="font-weight:700;color:var(--mustard);font-size:1rem;">#${order.orderNumber}</div>
-        <div style="font-size:.68rem;color:var(--text-dim);">${fmtTime(order.createdAt)}</div>
-      </div>
-      <span class="status-badge status-${order.status}">${order.status}</span>
-    </div>
-    <div class="track-stepper">${stepsHtml}</div>
-    <div style="font-size:.78rem;color:var(--text-dim);border-top:1px dashed rgba(242,183,5,.25);padding-top:10px;">
-      ${order.items.map(i=>`${escapeHtml(i.name)} × ${i.qty}`).join(", ")}
-      <br><b style="color:var(--mustard);">Total: ₹${order.total}</b> • ${escapeHtml(order.paymentMethod)}
-    </div>
-  `;
-}
-
-/* ---------------- ORDERS HISTORY PAGE ---------------- */
-Pages.orders = function(){
-  const el = pageEl();
-  el.appendChild(subPageHeader("🧾 My Orders"));
-  const data = DB.get();
-  const list = document.createElement("div");
-
-  if(!data.orders.length){
-    list.innerHTML = `<div class="empty-state"><div class="em">🧾</div><p>No orders yet. Start ordering!</p></div>`;
-  }else{
-    [...data.orders].sort((a,b)=>b.createdAt-a.createdAt).forEach(order=>{
-      const card = document.createElement("div");
-      card.className="hist-card";
-      card.innerHTML = `
-        <div class="hist-top">
-          <span class="hist-id">#${order.orderNumber}</span>
-          <span class="status-badge status-${order.status}">${order.status}</span>
-        </div>
-        <div class="hist-time">${fmtTime(order.createdAt)}</div>
-        <div class="hist-items">${order.items.map(i=>`${escapeHtml(i.name)} × ${i.qty}`).join(", ")} — <b style="color:var(--mustard);">₹${order.total}</b></div>
-        <div class="hist-foot">
-          <button class="btn btn-outline btn-sm track-b">📍 Track</button>
-          <button class="btn btn-ghost btn-sm reorder-b">🔁 Reorder</button>
-          ${order.status==="Completed" && !order.feedbackGiven ? `<button class="btn btn-mustard btn-sm fb-b">⭐ Rate</button>` : ""}
-        </div>
-      `;
-      card.querySelector(".track-b").addEventListener("click", ()=> Router.go("track",{orderId:order.id}));
-      card.querySelector(".reorder-b").addEventListener("click", ()=>{
-        reorderItems(order);
-      });
-      const fbBtn = card.querySelector(".fb-b");
-      if(fbBtn) fbBtn.addEventListener("click", ()=> openFeedbackModal(order));
-      list.appendChild(card);
-    });
-  }
-  el.appendChild(list);
-  return el;
-};
-
-function reorderItems(order){
-  const data = DB.get();
-  let addedCount = 0;
-  order.items.forEach(oi=>{
-    const menuItem = data.menu.find(m=>m.id===oi.itemId);
-    if(menuItem && menuItem.available){
-      let entry = data.cart.find(c=>c.itemId===menuItem.id);
-      if(entry) entry.qty += oi.qty;
-      else data.cart.push({itemId:menuItem.id, qty:oi.qty});
-      addedCount++;
+  const bar = document.getElementById('cartBar');
+  const count = cartItemCount();
+  if(count > 0){
+    if(bar){
+      bar.classList.add('show');
     }
-  });
-  DB.save();
-  updateCartBadge();
-  if(addedCount>0){
-    toast("Items added to cart from previous order 🔁");
-    Router.go("cart");
-  }else{
-    toast("Those items are no longer available");
   }
+  renderCartView();
 }
 
-function updateOrdersNavBadge(){
-  const data = DB.get();
-  const active = data.orders.filter(o=>["Pending","Accepted","Preparing","Ready"].includes(o.status)).length;
-  const badge = document.getElementById("ordersNavBadge");
-  if(active>0){ badge.textContent=active; badge.classList.remove("hidden"); }
-  else{ badge.classList.add("hidden"); }
+// Insert a floating cart bar dynamically (kept simple: reuse bottom nav "cart" badge instead)
+function renderCartView(){
+  const list = document.getElementById('cartList');
+  const entries = Object.entries(cart);
+  document.getElementById('cartEmpty').classList.toggle('hidden', entries.length>0);
+  document.getElementById('checkoutBox').classList.toggle('hidden', entries.length===0);
+
+  list.innerHTML = entries.map(([key, it])=>`
+    <div class="cart-item">
+      <img src="${escapeHtml(it.image)}" onerror="this.src='https://via.placeholder.com/100/FBC02D/1A1A1A?text=Food'">
+      <div class="info">
+        <h4>${escapeHtml(it.name)}</h4>
+        <div class="price">₹${it.price} x ${it.qty} = ₹${it.price*it.qty}</div>
+      </div>
+      <div class="qty-control">
+        <button class="qty-minus" data-key="${key}">-</button>
+        <span>${it.qty}</span>
+        <button class="qty-plus" data-key="${key}">+</button>
+      </div>
+    </div>
+  `).join('');
+
+  list.querySelectorAll('.qty-plus').forEach(b=> b.addEventListener('click', ()=> addToCart(b.getAttribute('data-key'))));
+  list.querySelectorAll('.qty-minus').forEach(b=> b.addEventListener('click', ()=> removeOneFromCart(b.getAttribute('data-key'))));
+
+  document.getElementById('cartTotal').textContent = '₹' + cartTotalAmount();
 }
 
-/* ---------------- FEEDBACK MODAL ---------------- */
-function openFeedbackModal(order){
-  let rating = 5;
-  const overlay = openModal(`
-    <h3>⭐ Rate Your Order <button class="x-close">✕</button></h3>
-    <p style="font-size:.8rem;color:var(--text-dim);text-align:center;">Order #${order.orderNumber}</p>
-    <div class="star-input" id="starInput">
-      ${[1,2,3,4,5].map(n=>`<button data-star="${n}" class="${n<=rating?'filled':''}">★</button>`).join("")}
-    </div>
-    <div class="form-row">
-      <label>Your Feedback</label>
-      <textarea id="fbMsg" placeholder="Tell us how it was..."></textarea>
-    </div>
-    <button class="btn btn-mustard btn-block" id="submitFbBtn">Submit Feedback</button>
-  `);
-  overlay.querySelector(".x-close").addEventListener("click", closeModal);
-  const starWrap = overlay.querySelector("#starInput");
-  starWrap.addEventListener("click",(e)=>{
-    const btn = e.target.closest("button");
-    if(!btn) return;
-    rating = parseInt(btn.dataset.star,10);
-    [...starWrap.children].forEach(b=> b.classList.toggle("filled", parseInt(b.dataset.star,10)<=rating));
+document.querySelectorAll('.pay-opt').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.pay-opt').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    selectedPayment = btn.getAttribute('data-pay');
   });
-  overlay.querySelector("#submitFbBtn").addEventListener("click", ()=>{
-    const message = overlay.querySelector("#fbMsg").value.trim();
-    const data = DB.get();
-    const fb = {
-      id: uid("f"),
-      orderId: order.id,
-      customerName: order.customerName,
-      rating,
-      message,
-      createdAt: Date.now()
-    };
-    data.feedback.push(fb);
-    const ord = data.orders.find(o=>o.id===order.id);
-    if(ord) ord.feedbackGiven = true;
-    DB.save();
-    SyncBridge.broadcast("new_feedback", fb);
-    closeModal();
-    toast("Thank you for your feedback! 🙏");
-    if(Router.current==="orders") Router.go("orders");
-    if(Router.current==="track") Router.go("track",{orderId:order.id});
-  });
-}
+});
 
-/* ---------------- PROFILE / SETTINGS PAGE ---------------- */
-Pages.profile = function(){
-  const el = pageEl();
-  el.appendChild(subPageHeader("👤 Profile & Settings"));
-  const data = DB.get();
+/* -------------------- 13. PLACE ORDER -------------------- */
+document.getElementById('placeOrderBtn').addEventListener('click', ()=>{
+  const name = document.getElementById('custName').value.trim();
+  const phone = document.getElementById('custPhone').value.trim();
+  const note = document.getElementById('custNote').value.trim();
 
-  const profPanel = document.createElement("div");
-  profPanel.className="panel";
-  profPanel.innerHTML = `
-    <div class="form-row">
-      <label>Your Name</label>
-      <input type="text" id="pName" value="${escapeHtml(data.profile.name||'')}" placeholder="Enter your name">
-    </div>
-    <div class="form-row">
-      <label>Mobile Number</label>
-      <input type="tel" id="pMobile" value="${escapeHtml(data.profile.mobile||'')}" placeholder="10-digit mobile number">
-    </div>
-    <button class="btn btn-mustard btn-block" id="saveProfBtn">💾 Save Profile</button>
-  `;
-  el.appendChild(profPanel);
-  profPanel.querySelector("#saveProfBtn").addEventListener("click", ()=>{
-    data.profile.name = profPanel.querySelector("#pName").value.trim();
-    data.profile.mobile = profPanel.querySelector("#pMobile").value.trim();
-    DB.save();
-    toast("Profile saved ✅");
-  });
+  if(!name){ toast('Please enter your name'); return; }
+  if(!phone || phone.length < 8){ toast('Please enter a valid phone number'); return; }
+  if(Object.keys(cart).length === 0){ toast('Your cart is empty'); return; }
+  if(!firebaseReady){ toast('Firebase not connected'); return; }
 
-  const settingsPanel = document.createElement("div");
-  settingsPanel.className="panel";
-  settingsPanel.innerHTML = `
-    <div class="switch-row">
-      <span>🔔 Order Notifications</span>
-      <label class="switch"><input type="checkbox" id="notifToggle" ${data.settings.notificationsEnabled?'checked':''}><span class="slider-tog"></span></label>
-    </div>
-    <div class="switch-row">
-      <span>🌙 Dark Mode</span>
-      <label class="switch"><input type="checkbox" id="darkToggle" ${data.settings.darkMode?'checked':''}><span class="slider-tog"></span></label>
-    </div>
-  `;
-  el.appendChild(settingsPanel);
-  settingsPanel.querySelector("#notifToggle").addEventListener("change",(e)=>{
-    data.settings.notificationsEnabled = e.target.checked;
-    DB.save();
-    toast(e.target.checked?"Notifications enabled 🔔":"Notifications muted 🔕");
-  });
-  settingsPanel.querySelector("#darkToggle").addEventListener("change",(e)=>{
-    data.settings.darkMode = e.target.checked;
-    DB.save();
-    applyTheme();
-    toast(e.target.checked?"Dark mode on 🌙":"Light mode on ☀️");
-  });
+  const orderItems = Object.values(cart).map(it=> ({ name:it.name, price:it.price, qty:it.qty }));
+  const orderNo = "PP" + Math.floor(1000 + Math.random()*9000);
 
-  const infoPanel = document.createElement("div");
-  infoPanel.className="panel";
-  infoPanel.innerHTML = `
-    <div class="btn-row" style="margin-bottom:8px;">
-      <button class="btn btn-outline btn-sm" id="callBtn2">📞 Call Shop</button>
-      <button class="btn btn-outline btn-sm" id="mapsBtn2">📍 Directions</button>
-    </div>
-    <div style="font-size:.7rem;color:var(--text-dim);margin-top:10px;text-align:center;">
-      ${APP_NAME} • v${APP_VERSION}
-    </div>
-  `;
-  el.appendChild(infoPanel);
-  infoPanel.querySelector("#callBtn2").addEventListener("click", ()=>{
-    window.location.href = `tel:${data.shop.phone.replace(/\s/g,"")}`;
-  });
-  infoPanel.querySelector("#mapsBtn2").addEventListener("click", ()=>{
-    window.open(data.shop.mapsLink, "_blank");
-  });
+  const orderData = {
+    orderNo,
+    customerName: name,
+    phone,
+    items: orderItems,
+    payment: selectedPayment,
+    notes: note,
+    status: "Pending",
+    ts: Date.now()
+  };
 
-  return el;
+  const newKey = db.ref('orders').push().key;
+  db.ref('orders/' + newKey).set(orderData).then(()=>{
+    saveMyOrderKey(newKey);
+    cart = {};
+    saveCart();
+    renderMenu();
+    renderCartBar();
+    document.getElementById('custName').value = '';
+    document.getElementById('custPhone').value = '';
+    document.getElementById('custNote').value = '';
+    toast('Order placed successfully! Order #' + orderNo);
+    navigateTo('orders');
+  }).catch(err=>{
+    toast('Failed to place order: ' + err.message);
+  });
+});
+
+/* -------------------- 14. ORDER TRACKING (live) -------------------- */
+const STATUS_STEPS = ['Pending','Accepted','Preparing','Ready','Completed'];
+const STATUS_ICONS = {Pending:'&#128337;', Accepted:'&#9989;', Preparing:'&#127858;', Ready:'&#127881;', Completed:'&#128077;', Cancelled:'&#10060;'};
+const STATUS_DESC = {
+  Pending:'Waiting for shop to accept your order',
+  Accepted:'Your order has been accepted',
+  Preparing:'Your food is being prepared fresh',
+  Ready:'Your order is ready for pickup',
+  Completed:'Order completed — enjoy your meal!',
+  Cancelled:'This order was cancelled'
 };
 
-/* ============================================================
-   9. SYNC LISTENERS — receive updates from Owner app
-   ============================================================ */
-function requestMenuFromOwner(){
-  // Announce presence; Owner app can optionally respond by
-  // re-broadcasting current menu/shop state on this event.
-  SyncBridge.broadcast("customer_ready", {ts:Date.now()});
-}
+function renderMyOrders(){
+  const myKeys = getMyOrderKeys();
+  const activeList = document.getElementById('activeOrdersList');
+  const prevList = document.getElementById('prevOrdersList');
 
-function startSyncListeners(){
-  SyncBridge.listen((payload)=>{
-    const data = DB.get();
-    switch(payload.type){
-      case "menu_update":
-        data.menu = payload.data;
-        DB.save();
-        if(Router.current==="menu") Router.go("menu");
-        toast("Menu updated 🍽️");
-        break;
-      case "shop_update":
-        Object.assign(data.shop, payload.data);
-        DB.save();
-        applyShopBranding();
-        if(Router.current==="home") Router.go("home");
-        break;
-      case "order_update":{
-        const incoming = payload.data;
-        const local = data.orders.find(o=>o.id===incoming.id || o.orderNumber===incoming.orderNumber);
-        if(local && local.status !== incoming.status){
-          const oldStatus = local.status;
-          local.status = incoming.status;
-          DB.save();
-          updateOrdersNavBadge();
-          if(data.settings.notificationsEnabled){
-            showStatusPopup(local);
-          }
-          if(Router.current==="track" && Router.params && Router.params.orderId===local.id){
-            Router.go("track",{orderId:local.id});
-          }
-          if(Router.current==="orders") Router.go("orders");
-        }
-        break;
-      }
-      case "announcement":
-        data.announcements.push(payload.data);
-        DB.save();
-        if(data.settings.notificationsEnabled){
-          showAnnouncementPopup(payload.data);
-        }
-        if(Router.current==="home") Router.go("home");
-        break;
-      default:
-        break;
+  const myOrders = myKeys
+    .map(key=> ({ key, order: state.ordersFromServer[key] }))
+    .filter(o=> o.order);
+
+  const active = myOrders.filter(o=> !['Completed','Cancelled'].includes(o.order.status));
+  const past = myOrders.filter(o=> ['Completed','Cancelled'].includes(o.order.status));
+
+  document.getElementById('ordersEmpty').classList.toggle('hidden', active.length>0);
+
+  activeList.innerHTML = active.map(({key, order})=>{
+    const isCancelled = order.status === 'Cancelled';
+    const currentIdx = STATUS_STEPS.indexOf(order.status);
+    const total = (order.items||[]).reduce((s,it)=> s + it.price*it.qty, 0);
+    const itemsStr = (order.items||[]).map(it=> `${it.name} x${it.qty}`).join(', ');
+
+    let timelineHtml = '';
+    if(isCancelled){
+      timelineHtml = `
+        <div class="tl-step cancelled">
+          <div class="tl-dot">${STATUS_ICONS.Cancelled}</div>
+          <div class="tl-line"><h5>Order Cancelled</h5><p>${STATUS_DESC.Cancelled}</p></div>
+        </div>`;
+    } else {
+      timelineHtml = STATUS_STEPS.map((step, idx)=>{
+        const cls = idx < currentIdx ? 'done' : (idx === currentIdx ? 'current' : '');
+        return `
+        <div class="tl-step ${cls}">
+          <div class="tl-dot">${idx <= currentIdx ? '&#10003;' : (idx+1)}</div>
+          <div class="tl-line"><h5>${step}</h5><p>${STATUS_DESC[step]}</p></div>
+        </div>`;
+      }).join('');
     }
+
+    return `
+    <div class="order-track-card">
+      <div class="otc-head">
+        <h4>Order #${escapeHtml(order.orderNo || key.slice(0,6))}</h4>
+        <span class="time">${fmtTime(order.ts)}</span>
+      </div>
+      <div class="timeline">${timelineHtml}</div>
+      <div class="items-mini">${escapeHtml(itemsStr)} &middot; Total ₹${total} &middot; ${escapeHtml(order.payment)}</div>
+    </div>`;
+  }).join('');
+
+  prevList.innerHTML = past.map(({key, order})=>{
+    const total = (order.items||[]).reduce((s,it)=> s + it.price*it.qty, 0);
+    return `
+    <div class="prev-order-card">
+      <div class="l">
+        <h5>#${escapeHtml(order.orderNo || key.slice(0,6))} &middot; ₹${total}</h5>
+        <p>${fmtTime(order.ts)}</p>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+        <span class="status-pill status-${order.status}">${order.status}</span>
+        ${order.status === 'Completed' && !order.feedbackGiven ? `<button class="rate-btn" data-key="${key}" style="font-size:10.5px;font-weight:800;color:#8B2E1A;background:none;">Rate Order &#8594;</button>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+
+  prevList.querySelectorAll('.rate-btn').forEach(b=>{
+    b.addEventListener('click', ()=>{
+      feedbackTargetOrderKey = b.getAttribute('data-key');
+      document.getElementById('feedbackOrderLabel').textContent = 'How was Order #' + (state.ordersFromServer[feedbackTargetOrderKey].orderNo || '') + '?';
+      selectedRating = 0;
+      updateStarPicker();
+      navigateTo('feedback');
+    });
   });
-  updateConnIndicatorGlobal();
-  setInterval(updateConnIndicatorGlobal, 5000);
 }
 
-function updateConnIndicatorGlobal(){
-  if(Router.current==="home"){
-    const indicatorEl = document.getElementById("connIndicator");
-    const textEl = document.getElementById("connText");
-    updateConnIndicator(indicatorEl, textEl);
+function updateOrderDot(){
+  const myKeys = getMyOrderKeys();
+  const hasActive = myKeys.some(key=>{
+    const o = state.ordersFromServer[key];
+    return o && !['Completed','Cancelled'].includes(o.status);
+  });
+  document.getElementById('orderDot').classList.toggle('show', hasActive);
+}
+
+/* -------------------- 15. FEEDBACK -------------------- */
+function updateStarPicker(){
+  document.querySelectorAll('#starPicker span').forEach(s=>{
+    s.classList.toggle('active', Number(s.getAttribute('data-val')) <= selectedRating);
+  });
+}
+document.querySelectorAll('#starPicker span').forEach(s=>{
+  s.addEventListener('click', ()=>{
+    selectedRating = Number(s.getAttribute('data-val'));
+    updateStarPicker();
+  });
+});
+document.getElementById('submitFeedbackBtn').addEventListener('click', ()=>{
+  const name = document.getElementById('fbName').value.trim();
+  const message = document.getElementById('fbMessage').value.trim();
+  if(selectedRating === 0){ toast('Please select a star rating'); return; }
+  if(!name){ toast('Please enter your name'); return; }
+  if(!firebaseReady){ toast('Firebase not connected'); return; }
+
+  const key = db.ref('feedback').push().key;
+  db.ref('feedback/' + key).set({
+    rating: selectedRating,
+    customerName: name,
+    message,
+    ts: Date.now(),
+    orderKey: feedbackTargetOrderKey || null
+  }).then(()=>{
+    if(feedbackTargetOrderKey){
+      db.ref('orders/' + feedbackTargetOrderKey).update({ feedbackGiven: true });
+    }
+    document.getElementById('fbName').value = '';
+    document.getElementById('fbMessage').value = '';
+    selectedRating = 0;
+    updateStarPicker();
+    toast('Thank you for your feedback!');
+    navigateTo('orders');
+  }).catch(err=> toast('Failed to submit: ' + err.message));
+});
+
+/* -------------------- 16. PROFILE / CLEAR HISTORY -------------------- */
+document.getElementById('clearHistoryRow').addEventListener('click', ()=>{
+  if(confirm("Clear your local order history? (This only clears tracking on this device, not the shop's records)")){
+    localStorage.removeItem(LS_ORDER_KEYS);
+    renderMyOrders();
+    toast('Order history cleared');
   }
-}
-window.addEventListener("online", updateConnIndicatorGlobal);
-window.addEventListener("offline", updateConnIndicatorGlobal);
+});
+document.getElementById('shopInfoRow').addEventListener('click', ()=>{
+  const s = state.settings;
+  alert(`${s.shopName || 'Pet Puja'}\n${s.address || ''}\nPhone: ${s.phone || 'N/A'}\nHours: ${s.hours || 'N/A'}`);
+});
 
-function showStatusPopup(order){
-  const meta = STATUS_META[order.status] || {ic:"🔔", sub:""};
-  const popup = document.createElement("div");
-  popup.className="status-popup";
-  popup.innerHTML = `
-    <h4>${meta.ic} Order #${order.orderNumber} — ${order.status}</h4>
-    <p>${meta.sub}</p>
-  `;
-  document.body.appendChild(popup);
-  popup.addEventListener("click", ()=>{ Router.go("track",{orderId:order.id}); popup.remove(); });
-  setTimeout(()=> popup.remove(), 5000);
-}
-
-function showAnnouncementPopup(ann){
-  const popup = document.createElement("div");
-  popup.className="status-popup";
-  popup.innerHTML = `<h4>📢 ${escapeHtml(ann.title)}</h4><p>${escapeHtml(ann.message)}</p>`;
-  document.body.appendChild(popup);
-  popup.addEventListener("click", ()=>{ Router.go("home"); popup.remove(); });
-  setTimeout(()=> popup.remove(), 5000);
-}
-
-/* ============================================================
-   10. INSTALL BANNER + PWA (manifest & service worker via Blob)
-   ============================================================ */
-let deferredPrompt = null;
-const installBanner = document.getElementById("installBanner");
-let isInstalled = false;
-
-function checkStandalone(){
-  isInstalled = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
-  return isInstalled;
-}
-function showInstallBannerIfNeeded(){
-  if(checkStandalone()) return;
-  installBanner.classList.remove("hidden");
-}
-window.addEventListener("beforeinstallprompt",(e)=>{
+/* -------------------- 17. PWA: INSTALL PROMPT -------------------- */
+window.addEventListener('beforeinstallprompt', (e)=>{
   e.preventDefault();
-  deferredPrompt = e;
-  showInstallBannerIfNeeded();
-});
-installBanner.addEventListener("click", async (e)=>{
-  if(e.target.id==="installBannerClose") return;
-  if(deferredPrompt){
-    deferredPrompt.prompt();
-    const choice = await deferredPrompt.userChoice;
-    if(choice.outcome==="accepted"){
-      toast("Installing Pet Puja... 📲");
-      installBanner.classList.add("hidden");
-    }
-    deferredPrompt = null;
-  }else{
-    toast("Use your browser menu → 'Add to Home Screen' to install");
+  deferredInstallPrompt = e;
+  if(!localStorage.getItem('petpuja_customer_install_dismissed')){
+    document.getElementById('installBanner').classList.add('show');
   }
 });
-document.getElementById("installBannerClose").addEventListener("click",(e)=>{
-  e.stopPropagation();
-  installBanner.classList.add("hidden");
-  setTimeout(()=>{ if(!checkStandalone()) installBanner.classList.remove("hidden"); }, 20000);
-});
-window.addEventListener("appinstalled", ()=>{
-  isInstalled = true;
-  installBanner.classList.add("hidden");
-  toast("Pet Puja installed successfully! 🎉");
-});
-
-function registerPWA(){
-  const manifest = {
-    name: APP_NAME,
-    short_name: "Pet Puja",
-    description: "Order tasty food from your favorite tea stall",
-    start_url: ".",
-    scope: ".",
-    display: "standalone",
-    background_color: "#1a1210",
-    theme_color: "#7a1f1f",
-    orientation: "portrait-primary",
-    icons: [
-      {src: LOGO_URL, sizes:"192x192", type:"image/png", purpose:"any maskable"},
-      {src: LOGO_URL, sizes:"512x512", type:"image/png", purpose:"any maskable"}
-    ]
-  };
-  const manifestBlob = new Blob([JSON.stringify(manifest)], {type:"application/json"});
-  const manifestURL = URL.createObjectURL(manifestBlob);
-  const link = document.createElement("link");
-  link.rel="manifest"; link.href=manifestURL;
-  document.head.appendChild(link);
-
-  if("serviceWorker" in navigator){
-    const swSource = `
-      const CACHE_NAME = "petpuja-customer-cache-v1";
-      self.addEventListener("install",(e)=>{ self.skipWaiting(); });
-      self.addEventListener("activate",(e)=>{ e.waitUntil(self.clients.claim()); });
-      self.addEventListener("fetch",(e)=>{
-        if(e.request.method !== "GET") return;
-        e.respondWith(
-          caches.open(CACHE_NAME).then(async (cache)=>{
-            const cached = await cache.match(e.request);
-            const fetchPromise = fetch(e.request).then((res)=>{
-              if(res && res.status===200){ cache.put(e.request, res.clone()); }
-              return res;
-            }).catch(()=> cached);
-            return cached || fetchPromise;
-          })
-        );
-      });
-    `;
-    const swBlob = new Blob([swSource], {type:"application/javascript"});
-    const swURL = URL.createObjectURL(swBlob);
-    navigator.serviceWorker.register(swURL).catch(err=> console.warn("SW registration failed", err));
+document.getElementById('installGoBtn').addEventListener('click', async ()=>{
+  document.getElementById('installBanner').classList.remove('show');
+  if(deferredInstallPrompt){
+    deferredInstallPrompt.prompt();
+    await deferredInstallPrompt.userChoice;
+    deferredInstallPrompt = null;
   }
-}
+});
+document.getElementById('installCloseBtn').addEventListener('click', ()=>{
+  document.getElementById('installBanner').classList.remove('show');
+  localStorage.setItem('petpuja_customer_install_dismissed', '1');
+});
+window.addEventListener('appinstalled', ()=>{
+  toast('Pet Puja installed!');
+  document.getElementById('installBanner').classList.remove('show');
+});
 
-/* ============================================================
-   11. BOOT SEQUENCE
-   ============================================================ */
-function boot(){
-  DB.load();
-  registerPWA();
-  initSplashThenHome();
+/* -------------------- 18. PWA: MANIFEST + SERVICE WORKER (inline, no extra files) -------------------- */
+const manifestObj = {
+  name: "Pet Puja",
+  short_name: "Pet Puja",
+  description: "Order authentic retro Indian street food, live order tracking, and more.",
+  start_url: ".",
+  scope: ".",
+  display: "standalone",
+  background_color: "#8B2E1A",
+  theme_color: "#8B2E1A",
+  orientation: "portrait",
+  icons: [
+    { src: "https://i.ibb.co/GQ48tKry/Untitled475-20260710010108.png", sizes: "192x192", type: "image/png", purpose: "any maskable" },
+    { src: "https://i.ibb.co/GQ48tKry/Untitled475-20260710010108.png", sizes: "512x512", type: "image/png", purpose: "any maskable" }
+  ]
+};
+const manifestBlob = new Blob([JSON.stringify(manifestObj)], {type:'application/json'});
+const manifestURL = URL.createObjectURL(manifestBlob);
+const manifestLink = document.createElement('link');
+manifestLink.rel = 'manifest';
+manifestLink.href = manifestURL;
+document.head.appendChild(manifestLink);
 
-  setInterval(()=>{
-    if(checkStandalone()) installBanner.classList.add("hidden");
-  }, 4000);
+const swCode = `
+const CACHE_NAME = 'petpuja-customer-v1.0.0';
+self.addEventListener('install', (e)=>{
+  self.skipWaiting();
+  e.waitUntil(caches.open(CACHE_NAME).then(cache=> cache.addAll([]).catch(()=>{})));
+});
+self.addEventListener('activate', (e)=>{
+  e.waitUntil(
+    caches.keys().then(keys=> Promise.all(keys.filter(k=>k!==CACHE_NAME).map(k=>caches.delete(k))))
+  );
+  self.clients.claim();
+});
+self.addEventListener('fetch', (e)=>{
+  if(e.request.method !== 'GET') return;
+  e.respondWith(
+    caches.match(e.request).then(cached=>{
+      const fetchPromise = fetch(e.request).then(networkResp=>{
+        if(networkResp && networkResp.status === 200 && e.request.url.startsWith('http')){
+          const respClone = networkResp.clone();
+          caches.open(CACHE_NAME).then(cache=> cache.put(e.request, respClone)).catch(()=>{});
+        }
+        return networkResp;
+      }).catch(()=> cached);
+      return cached || fetchPromise;
+    })
+  );
+});
+`;
+try{
+  const swBlob = new Blob([swCode], {type:'application/javascript'});
+  const swURL = URL.createObjectURL(swBlob);
+  if('serviceWorker' in navigator){
+    navigator.serviceWorker.register(swURL).then(()=>{
+      console.log('Service worker registered for offline caching.');
+    }).catch(err=> console.warn('SW registration failed:', err));
+  }
+}catch(e){ console.warn('Service worker setup skipped:', e); }
 
-  // Dev/demo hooks for testing sync from console:
-  //   window.__petpujaCustomer.simulateStatusChange(orderId, "Accepted")
-  //   window.__petpujaCustomer.simulateAnnouncement("Title","Message")
-  window.__petpujaCustomer = {
-    getSyncKey: ()=> SyncBridge.getKey(), // internal/hidden — debugging only
-    exportData: ()=> DB.get(),
-    simulateStatusChange: (orderId, status)=>{
-      const data = DB.get();
-      const order = data.orders.find(o=>o.id===orderId);
-      if(order){ SyncBridge.broadcast("order_update", {...order, status}); }
-    },
-    simulateAnnouncement: (title,message)=>{
-      SyncBridge.broadcast("announcement", {id:uid("n"), title, message, createdAt:Date.now()});
-    }
-  };
-}
+/* -------------------- 19. SPLASH SCREEN TIMING -------------------- */
+window.addEventListener('load', ()=>{
+  setTimeout(()=>{
+    document.getElementById('splash').classList.add('hide');
+  }, 1400);
+});
 
-if(document.readyState==="loading"){
-  document.addEventListener("DOMContentLoaded", boot);
-}else{
-  boot();
-}
-
-})();
+/* -------------------- 20. INITIAL RENDER -------------------- */
+renderCartBar();
+initAppData();
 </script>
 </body>
 </html>
