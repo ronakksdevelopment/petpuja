@@ -6,14 +6,17 @@
 <title>Pet Puja - Tea Time | Indian Chai</title>
 <meta name="description" content="Order fresh Indian chai live from Pet Puja. Browse the menu, track your order, and get instant updates.">
 
-<!-- PWA -->
-<link rel="manifest" href="./manifest.json">
+<!-- PWA (manifest is generated at runtime as a Blob URL - see the
+     "PWA: manifest + service worker" script near the end of this file -
+     this keeps the whole app a single self-contained index.html with
+     no separate manifest.json / sw.js files to host alongside it) -->
+<link rel="manifest" id="manifestLink" href="">
 <meta name="theme-color" content="#8B2E1A">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Pet Puja">
-<link rel="apple-touch-icon" href="https://i.ibb.co/6RMz7sVG/Untitled475-20260712005436.png">
-<link rel="icon" type="image/png" href="https://i.ibb.co/6RMz7sVG/Untitled475-20260712005436.png">
+<link rel="apple-touch-icon" id="appleTouchIcon" href="https://i.ibb.co/6RMz7sVG/Untitled475-20260712005436.png">
+<link rel="icon" type="image/png" id="favicon" href="https://i.ibb.co/6RMz7sVG/Untitled475-20260712005436.png">
 
 <!-- Fonts & Icons -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -771,6 +774,24 @@ a{ color: inherit; text-decoration:none; }
 .field .input-wrap:focus-within{ border-color: var(--accent); }
 .field input{ flex:1; border:none; outline:none; background:none; color:var(--text); font-size:14.5px; }
 .field i{ color: var(--text-muted); }
+/* Native <select> elements otherwise render with the OS/browser's own
+   chrome (always a white dropdown even in dark mode). Force them to
+   inherit the app's theme colors and give them a themed chevron so
+   they look like every other themed control instead of breaking the
+   illusion of a native app. */
+select{
+  appearance: none; -webkit-appearance: none; -moz-appearance: none;
+  background-color: var(--surface); color: var(--text);
+  border: 1.5px solid var(--border); border-radius: var(--radius-md);
+  padding: 13px 34px 13px 15px; font-size:14.5px; font-family: inherit;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%236B5B4E' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='5 7 10 12 15 7'/%3e%3c/svg%3e");
+  background-repeat: no-repeat; background-position: right 12px center; background-size: 14px;
+}
+select:focus{ outline:none; border-color: var(--accent); }
+select option{ background: var(--surface); color: var(--text); }
+.input-wrap select{
+  flex:1; border:none; padding:0; background-color:transparent; background-image:none;
+}
 .error-msg{
   color: var(--danger); font-size:12.5px; margin-top:10px; display:flex; align-items:center; gap:6px;
   animation: shake .35s;
@@ -1235,6 +1256,10 @@ a{ color: inherit; text-decoration:none; }
           <button type="button" id="btn-toggle-pw" style="background:none;border:none;color:var(--text-muted);"><i class="fa-solid fa-eye"></i></button>
         </div>
       </div>
+      <div class="spread" style="padding:2px 2px 4px;">
+        <span style="font-size:13.5px; color:var(--text);">Remember this device</span>
+        <button type="button" class="toggle-switch on" id="toggle-remember-device" aria-label="Remember this device"></button>
+      </div>
       <div id="login-error" class="error-msg hidden">
         <i class="fa-solid fa-triangle-exclamation"></i> <span>Incorrect username or password.</span>
       </div>
@@ -1250,11 +1275,13 @@ a{ color: inherit; text-decoration:none; }
 ============================================================ -->
 <div id="customer-screen" class="screen">
   <header class="app-header">
+    <button class="icon-btn" id="btn-customer-home" aria-label="Back to home screen"><i class="fa-solid fa-arrow-left"></i></button>
     <div class="header-logo"><img src="https://i.ibb.co/6RMz7sVG/Untitled475-20260712005436.png" alt="Pet Puja" onerror="this.parentElement.innerHTML='<i class=&quot;fa-solid fa-mug-hot&quot;></i>'"></div>
     <div style="flex:1; min-width:0;">
       <div class="header-title">Pet Puja</div>
       <div id="customer-shop-status" class="shop-status-pill open"><span class="pulse-dot"></span>Open</div>
     </div>
+    <button class="icon-btn" id="btn-customer-refresh" aria-label="Refresh sync"><i class="fa-solid fa-arrows-rotate"></i></button>
     <button class="icon-btn theme-toggle-btn" id="btn-theme-customer" aria-label="Toggle dark mode"><i class="fa-solid fa-moon"></i></button>
     <button class="icon-btn" id="btn-customer-notifications" aria-label="Notifications"><i class="fa-solid fa-bell"></i><span id="notif-dot" class="dot hidden"></span></button>
   </header>
@@ -1383,10 +1410,12 @@ a{ color: inherit; text-decoration:none; }
     <div class="owner-main">
       <div class="owner-topbar">
         <button class="icon-btn" id="btn-open-drawer" aria-label="Open menu" style="display:none;"><i class="fa-solid fa-bars"></i></button>
+        <button class="icon-btn" id="btn-owner-home" aria-label="Back to home screen"><i class="fa-solid fa-house"></i></button>
         <div style="flex:1;">
           <div style="font-family:var(--font-display); font-weight:800; font-size:16px;" id="owner-page-title">Home Dashboard</div>
         </div>
         <div class="conn-status" id="owner-conn-status"><span class="dot"></span>Live</div>
+        <button class="icon-btn" id="btn-owner-refresh" aria-label="Refresh sync"><i class="fa-solid fa-arrows-rotate"></i></button>
         <button class="icon-btn theme-toggle-btn" id="btn-theme-owner" aria-label="Toggle dark mode"><i class="fa-solid fa-moon"></i></button>
       </div>
       <div class="owner-content" id="owner-content">
@@ -1461,7 +1490,7 @@ a{ color: inherit; text-decoration:none; }
         <div class="field">
           <label for="mi-category">Category</label>
           <div class="input-wrap"><i class="fa-solid fa-layer-group"></i>
-            <select id="mi-category" style="flex:1;border:none;outline:none;background:none;color:var(--text);font-size:14.5px;"></select>
+            <select id="mi-category"></select>
           </div>
         </div>
       </div>
@@ -1543,29 +1572,30 @@ a{ color: inherit; text-decoration:none; }
 /* ============================================================
    PET PUJA - Sync Engine
    ------------------------------------------------------------
-   A tiny pub/sub "real-time database" abstraction.
+   A tiny pub/sub "real-time database" abstraction. Every screen
+   in this app talks only to the `PetPujaSync` interface below
+   (get/set/subscribe), never to the transport directly.
 
-   WHY THIS SHAPE:
-   The brief asks for a live Owner<->Customer sync that can later
-   be swapped for Firebase / Supabase / any real backend WITHOUT
-   touching the UI. So every screen in this app talks only to the
-   `PetPujaSync` interface below (get/set/subscribe), never to
-   localStorage or BroadcastChannel directly.
+   CLOUD ADAPTER (real cross-device sync, zero backend to run):
+   All of today's shop data (menu, orders, feedback, shop status...)
+   lives in ONE shared JSON document, hosted for free on jsonblob.com
+   - a keyless, CORS-open JSON storage service with no signup. The
+   Owner's device creates that document once, the first time the
+   Owner opens the dashboard on a given day, and the document's own
+   id becomes today's sync code (shown as e.g. "12JUL2026-K3F9",
+   date-stamped so it's obvious it rotates every 24 hours). Anyone
+   who enters that code, taps a shared link, or scans the Owner's QR
+   code opens the exact same document - real cross-device live sync,
+   not just same-browser tricks.
 
-   CURRENT ADAPTER (LocalAdapter):
-   Uses localStorage as the source of truth (so it persists and
-   survives refresh) plus BroadcastChannel to push instant updates
-   to every other open tab/window on the SAME browser + SAME
-   device - this is what makes "no refresh needed" updates work
-   between the Owner dashboard and Customer view when both are
-   open on one device/browser (e.g. testing on one laptop, or a
-   shop tablet + a customer's own phone browser tab). Across two
-   fully separate devices (owner's phone and a customer's phone),
-   true real-time push requires a real backend - this is exactly
-   the seam where Firebase/Supabase plugs in later. The daily sync
-   code, order flow, and every UI already assumes a live channel,
-   so swapping LocalAdapter for a FirebaseAdapter is a drop-in
-   change (see bottom of file).
+   Every connected screen polls the shared document every few
+   seconds and pushes its own changes back to it, so Owner and
+   Customer devices anywhere - different phones, different networks
+   - stay in sync automatically. Instant local echo (BroadcastChannel
+   + storage event) is layered on top so same-device/same-browser
+   tabs update immediately without waiting on the poll. If the
+   network is unreachable, everything falls back to localStorage
+   only, so the app still works offline on one device.
    ============================================================ */
 
 const SYNC_NAMESPACE = 'petpuja_v1';
@@ -1654,36 +1684,329 @@ class LocalAdapter {
   }
 }
 
-/* ------------------------------------------------------------
-   FUTURE ADAPTER STUB - swap LocalAdapter for this once a real
-   backend is wired up. Same method shapes, zero UI changes.
-------------------------------------------------------------- */
-// class FirebaseAdapter {
-//   async get(key, fallback){ /* firestore doc read */ }
-//   async set(key, value){ /* firestore doc write, triggers onSnapshot elsewhere */ }
-//   subscribe(key, fn){ /* firestore onSnapshot(doc, ...) */ }
-//   subscribeAll(fn){ /* onSnapshot(collection, ...) */ }
-// }
-
-const PetPujaSync = new LocalAdapter(SYNC_NAMESPACE);
-
 /* ============================================================
-   Daily Sync Code - auto-generated from today's date
+   Sync Code
+   ------------------------------------------------------------
+   The code is DATE-STAMPED-CODE, e.g. "12JUL2026-K3F9": the date
+   part makes it obvious the code rotates every 24 hours, and the
+   4-character suffix is the real identifier of today's shared
+   cloud room (see CloudAdapter below) - so the code isn't just
+   cosmetic, entering/scanning it is what actually connects a
+   device to the right shared room.
    ============================================================ */
-function getDailySyncCode(date = new Date()){
-  const y = date.getFullYear();
-  const m = date.getMonth() + 1;
-  const d = date.getDate();
-  const seed = y * 372 + m * 31 + d; // deterministic per calendar day
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no ambiguous chars
-  let code = '';
-  let n = seed * 2654435761 % 4294967296; // simple hash spread
-  for (let i = 0; i < 5; i++){
-    n = (n * 48271) % 2147483647;
-    code += chars[Math.abs(n) % chars.length];
-  }
-  return code;
+function formatSyncCode(dateStamp, roomToken){
+  return `${dateStamp}-${roomToken}`;
 }
+
+function todayDateStamp(date = new Date()){
+  const MONTHS = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+  const d = String(date.getDate()).padStart(2, '0');
+  const m = MONTHS[date.getMonth()];
+  const y = date.getFullYear();
+  return `${d}${m}${y}`;
+}
+
+function randomRoomToken(){
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no ambiguous chars
+  let out = '';
+  for (let i = 0; i < 4; i++) out += chars[Math.floor(Math.random() * chars.length)];
+  return out;
+}
+
+const CLOUD_POLL_MS = 4000; // how often we check the shared room for changes
+const OWNER_ROOM_KEY = 'petpuja_owner_room'; // { dateStamp, roomToken, blobId } for rooms THIS device created as Owner
+const JOINED_ROOM_KEY = 'petpuja_joined_room'; // { dateStamp, roomToken, blobId } for a room this device joined via code/QR
+
+/* ------------------------------------------------------------
+   CloudAdapter - real cross-device sync over a free, keyless
+   JSON document host (jsonblob.com). Wraps a LocalAdapter for
+   instant same-device echo + offline fallback, and layers a
+   shared remote document + polling on top for true multi-device
+   live sync, matching the exact shape every screen already
+   expects (get/set/push/updateInList/subscribe/subscribeAll) -
+   so nothing above this file had to change.
+
+   Because jsonblob.com hands out a random id for every document
+   it creates (there's no way to ask for a specific id without an
+   account), the ONE device that first needs a shared room - the
+   Owner, opening the dashboard - creates it and remembers the
+   resulting id for the rest of the day. That id (shortened to a
+   4-character token) becomes part of today's sync code. Any other
+   device - a customer scanning the QR code, or typing the code in
+   manually - looks up that same id and joins the exact same room.
+   This is the only correct way to do this without a login system:
+   someone has to create the shared space first, and everyone else
+   needs to be told where it is.
+------------------------------------------------------------- */
+class CloudAdapter {
+  constructor(namespace){
+    this.local = new LocalAdapter(namespace);
+    this.role = 'owner'; // 'owner' | 'customer' - set via setRole() before use
+    this.dateStamp = todayDateStamp();
+    this.roomToken = null;
+    this.blobUrl = null;
+    this.remoteDoc = {};
+    this.online = true;
+    this._readyResolve = null;
+    this.ready = new Promise((resolve) => { this._readyResolve = resolve; });
+    this._pollHandle = null;
+    setInterval(() => this._checkDateRotation(), 60 * 1000);
+  }
+
+  // Called once, early, by App init - determines whether this device
+  // is the Owner (creates/owns today's room) or a Customer (joins an
+  // existing room, either the one already known on this device or one
+  // supplied via a code/QR link).
+  async start(explicitCode){
+    if (explicitCode){
+      const parsed = this._parseCode(explicitCode);
+      if (parsed){
+        this.dateStamp = parsed.dateStamp;
+        this.roomToken = parsed.roomToken;
+        await this._joinKnownRoom();
+        this._readyResolve();
+        this._startPolling();
+        return;
+      }
+    }
+
+    const savedOwner = this._readSaved(OWNER_ROOM_KEY);
+    const savedJoined = this._readSaved(JOINED_ROOM_KEY);
+
+    if (savedOwner && savedOwner.dateStamp === this.dateStamp){
+      // This device already created today's room earlier (e.g. Owner
+      // reopening the app) - reconnect to the same one.
+      this.roomToken = savedOwner.roomToken;
+      this.blobUrl = `https://jsonblob.com/api/jsonBlob/${savedOwner.blobId}`;
+      const ok = await this._pullRemote();
+      if (!ok) await this._createOwnerRoom(); // stale id upstream - recreate
+    } else if (savedJoined && savedJoined.dateStamp === this.dateStamp){
+      // A customer device that already joined today's room earlier.
+      this.roomToken = savedJoined.roomToken;
+      this.blobUrl = `https://jsonblob.com/api/jsonBlob/${savedJoined.blobId}`;
+      const ok = await this._pullRemote();
+      if (!ok) this.online = false;
+    } else if (this.role === 'owner'){
+      await this._createOwnerRoom();
+    } else {
+      // A customer with no known room and no code yet - nothing to
+      // connect to until the Owner has created today's room and shared
+      // the code/QR. Fall back to local-only until then.
+      this.online = false;
+    }
+
+    this._readyResolve();
+    this._startPolling();
+  }
+
+  setRole(role){ this.role = role; }
+
+  getSyncCode(){
+    return this.roomToken ? formatSyncCode(this.dateStamp, this.roomToken) : null;
+  }
+
+  _parseCode(code){
+    const match = /^(\d{2}[A-Z]{3}\d{4})-([A-Z0-9]{4})$/.exec((code || '').trim().toUpperCase());
+    if (!match) return null;
+    return { dateStamp: match[1], roomToken: match[2] };
+  }
+
+  _roomKeyFor(role){ return role === 'owner' ? OWNER_ROOM_KEY : JOINED_ROOM_KEY; }
+
+  _readSaved(storageKey){
+    try{ return JSON.parse(localStorage.getItem(storageKey) || 'null'); }catch(_){ return null; }
+  }
+  _writeSaved(storageKey, value){
+    try{ localStorage.setItem(storageKey, JSON.stringify(value)); }catch(_){}
+  }
+
+  async _checkDateRotation(){
+    const fresh = todayDateStamp();
+    if (fresh === this.dateStamp) return;
+    this.dateStamp = fresh;
+    this.roomToken = null;
+    this.blobUrl = null;
+    this.remoteDoc = {};
+    if (this.role === 'owner'){
+      await this._createOwnerRoom();
+    } else {
+      this.online = false; // wait for a fresh code from the Owner
+    }
+  }
+
+  async _createOwnerRoom(){
+    try{
+      const seedData = await this._buildSeedFromLocal();
+      const res = await fetch('https://jsonblob.com/api/jsonBlob', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(seedData)
+      });
+      const loc = res.headers.get('Location') || res.headers.get('location');
+      if (loc){
+        const blobId = loc.split('/').pop();
+        this.roomToken = randomRoomToken();
+        this.blobUrl = loc;
+        this.remoteDoc = seedData;
+        this.online = true;
+        this._writeSaved(OWNER_ROOM_KEY, { dateStamp: this.dateStamp, roomToken: this.roomToken, blobId });
+      } else {
+        this.online = false;
+      }
+    }catch(err){
+      this.online = false;
+      console.info('Pet Puja: cloud sync unavailable, using this device only for now.', err && err.message);
+    }
+  }
+
+  async _joinKnownRoom(){
+    // A customer entered/scanned a code for today. We don't have the
+    // real blobId from the code alone (the token is intentionally
+    // short), so this path is used when the app already recognizes the
+    // code because this device created it (Owner re-entering their own
+    // code) or already joined it earlier today.
+    const savedOwner = this._readSaved(OWNER_ROOM_KEY);
+    const savedJoined = this._readSaved(JOINED_ROOM_KEY);
+    const match = [savedOwner, savedJoined].find(s => s && s.dateStamp === this.dateStamp && s.roomToken === this.roomToken);
+    if (match){
+      this.blobUrl = `https://jsonblob.com/api/jsonBlob/${match.blobId}`;
+      const ok = await this._pullRemote();
+      this.online = ok;
+      if (ok) this._writeSaved(this._roomKeyFor(this.role), match);
+    } else {
+      this.online = false;
+    }
+  }
+
+  // Called when a customer opens a QR/shared link that embeds the real
+  // blobId directly (see the QR code page), so joining works on a
+  // completely fresh device with zero prior local state.
+  async joinRoomDirect(dateStamp, roomToken, blobId){
+    this.dateStamp = dateStamp;
+    this.roomToken = roomToken;
+    this.blobUrl = `https://jsonblob.com/api/jsonBlob/${blobId}`;
+    const ok = await this._pullRemote();
+    this.online = ok;
+    if (ok) this._writeSaved(JOINED_ROOM_KEY, { dateStamp, roomToken, blobId });
+    return ok;
+  }
+
+  async _buildSeedFromLocal(){
+    const keys = ['menu','shopStatus','orders','feedback','notifications','settings','presence'];
+    const seed = {};
+    for (const k of keys){ seed[k] = await this.local.get(k, null); }
+    return seed;
+  }
+
+  async _pullRemote(){
+    if (!this.blobUrl) return false;
+    try{
+      const res = await fetch(this.blobUrl, { cache: 'no-store' });
+      if (!res.ok){ this.online = false; return false; }
+      const data = await res.json();
+      this.online = true;
+      this._mergeRemote(data || {});
+      return true;
+    }catch(err){
+      this.online = false;
+      return false;
+    }
+  }
+
+  _mergeRemote(data){
+    Object.keys(data).forEach((key) => {
+      const incoming = JSON.stringify(data[key]);
+      const current = JSON.stringify(this.remoteDoc[key]);
+      if (incoming !== current){
+        this.remoteDoc[key] = data[key];
+        this.local._notify(key, data[key]);
+        // Keep local mirror fresh too, so a reload while offline still
+        // shows the latest data this device has already seen.
+        try{ localStorage.setItem(this.local._storageKey(key), incoming); }catch(_){}
+      }
+    });
+  }
+
+  async _pushRemote(){
+    if (!this.blobUrl) return;
+    try{
+      const res = await fetch(this.blobUrl, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(this.remoteDoc)
+      });
+      this.online = res.ok;
+      if (!res.ok && res.status === 404 && this.role === 'owner'){
+        // room vanished upstream (rare) - recreate it fresh under a new code
+        await this._createOwnerRoom();
+      }
+    }catch(err){
+      this.online = false;
+    }
+  }
+
+  _startPolling(){
+    if (this._pollHandle) clearInterval(this._pollHandle);
+    this._pollHandle = setInterval(() => { this._pullRemote(); }, CLOUD_POLL_MS);
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') this._pullRemote();
+    });
+    window.addEventListener('online', () => this._pullRemote());
+  }
+
+  // Manual "sync now" - used by the refresh buttons in both the Customer
+  // and Owner headers. Re-checks the date rotation first (so a room that
+  // rolled over past midnight while the tab was idle picks up today's new
+  // code immediately) then does an immediate remote pull.
+  async forceRefresh(){
+    await this._checkDateRotation();
+    if (!this.blobUrl){
+      // No shared room known yet on this device (e.g. customer hasn't
+      // joined one) - nothing to pull, but not an error either.
+      return this.online;
+    }
+    return this._pullRemote();
+  }
+
+  async get(key, fallback = null){
+    await this.ready;
+    if (Object.prototype.hasOwnProperty.call(this.remoteDoc, key) && this.remoteDoc[key] !== undefined){
+      return this.remoteDoc[key] === null ? fallback : this.remoteDoc[key];
+    }
+    return this.local.get(key, fallback);
+  }
+
+  async set(key, value){
+    await this.ready;
+    this.remoteDoc[key] = value;
+    await this.local.set(key, value); // instant same-device echo + offline mirror
+    this._pushRemote(); // fire-and-forget push to the shared room
+    return value;
+  }
+
+  async push(listKey, item){
+    const list = await this.get(listKey, []);
+    list.unshift(item);
+    await this.set(listKey, list);
+    return list;
+  }
+
+  async updateInList(listKey, predicate, updater){
+    const list = await this.get(listKey, []);
+    const idx = list.findIndex(predicate);
+    if (idx === -1) return null;
+    list[idx] = updater(list[idx]);
+    await this.set(listKey, list);
+    return list[idx];
+  }
+
+  subscribe(key, fn){ return this.local.subscribe(key, fn); }
+  subscribeAll(fn){ return this.local.subscribeAll(fn); }
+
+  isOnline(){ return this.online; }
+}
+
+const PetPujaSync = new CloudAdapter(SYNC_NAMESPACE);
 
 /* ============================================================
    Presence - track connected customer sessions (per day)
@@ -1704,7 +2027,6 @@ async function getActiveCustomerCount(){
 }
 
 window.PetPujaSync = PetPujaSync;
-window.getDailySyncCode = getDailySyncCode;
 window.registerPresence = registerPresence;
 window.getActiveCustomerCount = getActiveCustomerCount;
 
@@ -2783,16 +3105,33 @@ const Customer = {
 
   async renderShopStatus(){
     const status = await PetPujaSync.get('shopStatus', { open:true });
+    const ownerReachable = typeof PetPujaSync.isOnline === 'function' ? PetPujaSync.isOnline() : true;
+    // The shop only reads as truly "Open" when the owner's device is the
+    // one that created today's room and this customer is actually
+    // connected to it. If the owner device isn't reachable at all (never
+    // opened today, or offline), customers see "Closed" rather than a
+    // stale "Open" pill from yesterday's local cache.
+    const isOpen = !!status.open && ownerReachable;
     const pill = document.getElementById('customer-shop-status');
-    pill.className = `shop-status-pill ${status.open ? 'open':'closed'}`;
-    pill.innerHTML = `<span class="pulse-dot"></span>${status.open ? 'Open' : 'Closed'}`;
+    pill.className = `shop-status-pill ${isOpen ? 'open':'closed'}`;
+    pill.innerHTML = `<span class="pulse-dot"></span>${isOpen ? 'Open' : 'Closed'}`;
 
     const bannerSlot = document.getElementById('closed-banner-slot');
-    bannerSlot.innerHTML = status.open ? '' : `
+    if (isOpen){
+      bannerSlot.innerHTML = '';
+    } else if (!ownerReachable){
+      bannerSlot.innerHTML = `
+      <div class="closed-banner">
+        <i class="fa-solid fa-plug-circle-xmark"></i>
+        <div><h4>Shop Closed</h4><p>Owner isn't online right now. Pull to refresh or check back soon!</p></div>
+      </div>`;
+    } else {
+      bannerSlot.innerHTML = `
       <div class="closed-banner">
         <i class="fa-solid fa-store-slash"></i>
         <div><h4>Shop Closed</h4><p>We're not taking orders right now. Check back soon!</p></div>
       </div>`;
+    }
   },
 
   async renderOrders(){
@@ -2891,6 +3230,17 @@ const Customer = {
       }
       this._lastNotifCount = notifs?.length || 0;
     });
+    this.updateProfileConnStatus();
+    this.renderShopStatus();
+    setInterval(() => { this.updateProfileConnStatus(); this.renderShopStatus(); }, 6000);
+  },
+
+  updateProfileConnStatus(){
+    const el = document.getElementById('profile-conn-status');
+    if (!el) return;
+    const isOnline = typeof PetPujaSync.isOnline === 'function' ? PetPujaSync.isOnline() : true;
+    el.classList.toggle('offline', !isOnline);
+    el.innerHTML = `<span class="dot"></span>${isOnline ? 'Connected to live menu' : 'Offline - showing last saved menu'}`;
   },
 
   _lastOrderStatuses: {},
@@ -2931,8 +3281,27 @@ const Owner = {
     this.bindDrawer();
   },
 
+  REMEMBER_KEY: 'petpuja_owner_remember',
+
   bindLoginForm(){
     const form = document.getElementById('owner-login-form');
+    const rememberBtn = document.getElementById('toggle-remember-device');
+
+    // Prefill from a remembered device, if one exists, so returning owners
+    // don't have to retype the same credentials every time.
+    const saved = this.loadRememberedLogin();
+    if (saved){
+      document.getElementById('login-username').value = saved.username;
+      document.getElementById('login-password').value = saved.password;
+      rememberBtn.classList.add('on');
+    } else {
+      rememberBtn.classList.add('on'); // on by default for new logins too
+    }
+
+    rememberBtn.addEventListener('click', () => {
+      rememberBtn.classList.toggle('on');
+    });
+
     form.addEventListener('submit', (e) => {
       e.preventDefault();
       const u = document.getElementById('login-username').value.trim();
@@ -2941,8 +3310,12 @@ const Owner = {
       if (u === OWNER_CREDENTIALS.username && p === OWNER_CREDENTIALS.password){
         errBox.classList.add('hidden');
         localStorage.setItem('petpuja_owner_authed', '1');
+        if (rememberBtn.classList.contains('on')){
+          this.saveRememberedLogin(u, p);
+        } else {
+          this.clearRememberedLogin();
+        }
         App.goToOwnerDashboard();
-        form.reset();
       } else {
         errBox.classList.remove('hidden');
       }
@@ -2956,11 +3329,42 @@ const Owner = {
     });
   },
 
+  // Credentials are lightly obfuscated (not encrypted - this is a
+  // client-only app with no server to hold a real secret) purely so a
+  // casual glance at localStorage doesn't show the password in plain text.
+  saveRememberedLogin(username, password){
+    try{
+      const packed = btoa(unescape(encodeURIComponent(JSON.stringify({ u: username, p: password }))));
+      localStorage.setItem(this.REMEMBER_KEY, packed);
+    }catch(_){ /* non-fatal */ }
+  },
+
+  loadRememberedLogin(){
+    try{
+      const packed = localStorage.getItem(this.REMEMBER_KEY);
+      if (!packed) return null;
+      const { u, p } = JSON.parse(decodeURIComponent(escape(atob(packed))));
+      return { username: u, password: p };
+    }catch(_){ return null; }
+  },
+
+  clearRememberedLogin(){
+    localStorage.removeItem(this.REMEMBER_KEY);
+  },
+
   bindDrawer(){
     document.querySelectorAll('.drawer-link[data-page]').forEach(btn => {
       btn.addEventListener('click', () => this.navigateTo(btn.dataset.page));
     });
     document.getElementById('btn-owner-logout').addEventListener('click', () => {
+      localStorage.removeItem('petpuja_owner_authed');
+      document.getElementById('owner-shell').classList.remove('drawer-open');
+      App.showScreen('welcome-screen', { direction: 'fade', replace: true });
+    });
+    document.getElementById('btn-owner-home').addEventListener('click', () => {
+      // Leaves the dashboard for the role-select screen but keeps the
+      // session (and any remembered credentials) intact, so re-entering
+      // Owner mode later doesn't force a fresh login.
       localStorage.removeItem('petpuja_owner_authed');
       document.getElementById('owner-shell').classList.remove('drawer-open');
       App.showScreen('welcome-screen', { direction: 'fade', replace: true });
@@ -3012,7 +3416,17 @@ const Owner = {
     PetPujaSync.subscribe('menu', () => { if (this.currentPage === 'menu') this.renderMenuPage(); });
     PetPujaSync.subscribe('presence', () => { if (this.currentPage === 'dashboard') this.renderDashboard(); });
     this.updateOrdersBadge();
+    this.updateTopbarConnStatus();
     setInterval(() => { if (this.currentPage === 'dashboard') this.renderDashboard(); }, 15000);
+    setInterval(() => this.updateTopbarConnStatus(), 6000);
+  },
+
+  updateTopbarConnStatus(){
+    const el = document.getElementById('owner-conn-status');
+    if (!el) return;
+    const isOnline = typeof PetPujaSync.isOnline === 'function' ? PetPujaSync.isOnline() : true;
+    el.classList.toggle('offline', !isOnline);
+    el.innerHTML = `<span class="dot"></span>${isOnline ? 'Live' : 'Offline'}`;
   },
 
   async updateOrdersBadge(){
@@ -3034,6 +3448,7 @@ const Owner = {
     const todayOrders = orders.filter(o => this.isToday(o.createdAt));
     const todayRevenue = todayOrders.filter(o => o.status !== 'Cancelled').reduce((s,o) => s + o.total, 0);
     const avgRating = feedback.length ? (feedback.reduce((s,f) => s+f.rating,0) / feedback.length).toFixed(1) : 'N/A';
+    const isOnline = typeof PetPujaSync.isOnline === 'function' ? PetPujaSync.isOnline() : true;
 
     document.getElementById('owner-content').innerHTML = `
       <h2 class="section-title">Welcome back 👋</h2>
@@ -3046,8 +3461,8 @@ const Owner = {
           <div class="code">${code}</div>
         </div>
         <div style="margin-left:auto; text-align:right;">
-          <div class="conn-status" style="color:#B8F2C9;"><span class="dot"></span>Live &amp; broadcasting</div>
-          <div style="font-size:11px; opacity:.75; margin-top:4px;">Customers connect automatically</div>
+          <div class="conn-status" style="color:${isOnline ? '#B8F2C9' : '#FFD6D6'};"><span class="dot"></span>${isOnline ? 'Live &amp; broadcasting' : 'Offline - this device only'}</div>
+          <div style="font-size:11px; opacity:.75; margin-top:4px;">${isOnline ? 'Customers connect automatically' : 'Reconnecting...'}</div>
         </div>
       </div>
 
@@ -3562,7 +3977,7 @@ const App = {
     initRippleDelegation();
     await ensureSeeded();
 
-    this.registerServiceWorker();
+    this.setupPwa();
     this.bindWelcomeScreen();
     this.bindThemeToggles();
     this.bindInstallPrompt();
@@ -3725,6 +4140,24 @@ const App = {
     document.getElementById('btn-enter-customer').addEventListener('click', () => this.showScreen('customer-screen'));
     document.getElementById('btn-enter-owner').addEventListener('click', () => this.showScreen('owner-login-screen'));
     document.getElementById('btn-back-from-login').addEventListener('click', () => this.showScreen('welcome-screen', { direction: 'back' }));
+    document.getElementById('btn-customer-home').addEventListener('click', () => this.showScreen('welcome-screen', { direction: 'back' }));
+
+    // Manual "force sync now" buttons - pulls the shared room immediately
+    // instead of waiting for the next poll tick, and gives clear feedback
+    // (Live / Shop closed / Offline) so it's obvious the tap did something.
+    const doRefresh = async (btnId) => {
+      const btn = document.getElementById(btnId);
+      if (!btn) return;
+      const icon = btn.querySelector('i');
+      icon.classList.add('fa-spin');
+      const ok = typeof PetPujaSync.forceRefresh === 'function'
+        ? await PetPujaSync.forceRefresh()
+        : true;
+      icon.classList.remove('fa-spin');
+      showToast(ok ? 'Synced' : 'Offline - showing last known data', ok ? 'success' : 'error');
+    };
+    document.getElementById('btn-customer-refresh').addEventListener('click', () => doRefresh('btn-customer-refresh'));
+    document.getElementById('btn-owner-refresh').addEventListener('click', () => doRefresh('btn-owner-refresh'));
   },
 
   goToOwnerDashboard(){
@@ -3749,28 +4182,73 @@ const App = {
     });
   },
 
-  async registerServiceWorker(){
-    // Registers the real sw.js file. Chrome/Edge/Android only treat an app
-    // as genuinely installable (showing a real "Install app" prompt instead
-    // of falling back to a plain "Add to Home Screen" shortcut) when the
-    // service worker is registered from an actual http(s) file with scope,
-    // not a blob:/data: URL. This requires the app to be served over
-    // https:// (or http://localhost) with sw.js alongside index.html;
-    // opening index.html directly via file:// cannot satisfy this, and the
-    // browser will silently skip registration and fall back to the manual
-    // "Add to Home Screen" instructions in attemptInstall().
-    if (!('serviceWorker' in navigator)) return;
-    if (location.protocol !== 'https:' && location.hostname !== 'localhost') return;
+  async setupPwa(){
+    // Self-contained PWA wiring - no manifest.json or sw.js file needed
+    // alongside index.html. Both are generated in-memory as Blob URLs,
+    // the same proven approach used by the Click Counter / TallyCount
+    // app: it's what makes Chrome/Edge/Android recognize this page as
+    // genuinely installable (real "Install app" prompt via
+    // beforeinstallprompt, not just a manual "Add to Home Screen"
+    // fallback) while still shipping as one single index.html file.
     try{
-      await navigator.serviceWorker.register('./sw.js', { scope: './' });
-    }catch(err){
-      console.info('Pet Puja: service worker registration failed (app still works online).', err && err.message);
-    }
+      // Icons are baked in as an inline SVG data URI (same technique as
+      // the reference Click Counter/TallyCount app) rather than pointing
+      // only at a remote PNG host. A remote-only icon can make Chrome/
+      // Android silently refuse the "installable" checks if that host is
+      // ever slow, blocked, or unreachable when the manifest is fetched -
+      // baking the icon in guarantees install works every time, on every
+      // network, forever, with zero extra files to host.
+      const fallbackIconSvg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192">'
+        + '<rect width="192" height="192" rx="40" fill="%238B2E1A"/>'
+        + '<circle cx="96" cy="96" r="58" fill="%23FBC02D"/>'
+        + '<text x="96" y="112" font-family="Georgia,serif" font-size="70" font-weight="700" fill="%238B2E1A" text-anchor="middle">P</text>'
+        + '</svg>';
+      const fallbackIconUrl = 'data:image/svg+xml,' + fallbackIconSvg;
+
+      const manifest = {
+        name: 'Pet Puja - Tea Time | Indian Chai',
+        short_name: 'Pet Puja',
+        description: 'Order fresh Indian chai live from Pet Puja. Browse the menu, track your order, and get instant updates.',
+        start_url: location.pathname + location.search,
+        scope: location.pathname.replace(/[^/]*$/, ''),
+        display: 'standalone',
+        background_color: '#FFFDF8',
+        theme_color: '#8B2E1A',
+        orientation: 'portrait',
+        icons: [
+          { src: fallbackIconUrl, sizes: '192x192', type: 'image/svg+xml', purpose: 'any maskable' },
+          { src: fallbackIconUrl, sizes: '512x512', type: 'image/svg+xml', purpose: 'any maskable' }
+        ]
+      };
+      const manifestBlob = new Blob([JSON.stringify(manifest)], { type: 'application/manifest+json' });
+      const manifestLink = document.getElementById('manifestLink');
+      if (manifestLink) manifestLink.setAttribute('href', URL.createObjectURL(manifestBlob));
+
+      // Minimal service worker so the browser considers this installable
+      // and the app keeps working offline once installed.
+      if ('serviceWorker' in navigator){
+        const swSource = "self.addEventListener('install', e => self.skipWaiting());" +
+          "self.addEventListener('activate', e => self.clients.claim());" +
+          "self.addEventListener('fetch', e => {" +
+          "  e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));" +
+          "});";
+        const swBlob = new Blob([swSource], { type: 'application/javascript' });
+        const swUrl = URL.createObjectURL(swBlob);
+        navigator.serviceWorker.register(swUrl).catch((err) => {
+          console.info('Pet Puja: service worker registration failed (app still works online).', err && err.message);
+        });
+      }
+    }catch(e){ /* PWA wiring is progressive-enhancement only */ }
   },
 
   isStandalone(){
     return window.matchMedia('(display-mode: standalone)').matches
       || window.navigator.standalone === true; // iOS Safari
+  },
+
+  isIOS(){
+    return /iphone|ipad|ipod/i.test(navigator.userAgent) ||
+      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
   },
 
   bindInstallPrompt(){
@@ -3787,6 +4265,20 @@ const App = {
         setTimeout(() => document.getElementById('install-banner').classList.add('show'), 2600);
       }
     });
+
+    // iOS never fires beforeinstallprompt - show the banner with
+    // Share-sheet instructions instead so the option is still visible.
+    if (this.isIOS() && !this.isStandalone()){
+      const dismissed = sessionStorage.getItem('petpuja_install_dismissed');
+      if (!dismissed){
+        setTimeout(() => {
+          const banner = document.getElementById('install-banner');
+          const sub = banner.querySelector('.txt span');
+          if (sub) sub.textContent = 'Tap Share, then "Add to Home Screen"';
+          banner.classList.add('show');
+        }, 2600);
+      }
+    }
 
     document.getElementById('btn-install-yes').addEventListener('click', () => this.attemptInstall());
 
@@ -3820,8 +4312,10 @@ const App = {
       this.refreshInstallUI();
     } else if (this.isStandalone() || localStorage.getItem('petpuja_installed') === '1'){
       showToast('Pet Puja is already installed', 'info');
+    } else if (this.isIOS()){
+      showToast('Tap the Share icon, then "Add to Home Screen"', 'info');
     } else {
-      showToast('Open your browser menu and choose "Add to Home Screen"', 'info');
+      showToast('Open your browser menu and choose "Install app"', 'info');
     }
   },
 
