@@ -1354,6 +1354,12 @@ select option{ background: var(--surface); color: var(--text); }
           <button class="toggle-switch" id="toggle-dark-profile"></button>
         </div>
       </div>
+      <div class="card card-pad" style="margin-top:14px;" id="customer-sync-card">
+        <button class="spread" id="btn-open-sync-code" style="width:100%; background:none; border:none; padding:6px 0; color:var(--text);">
+          <span class="row gap-sm"><i class="fa-solid fa-tower-broadcast" style="color:var(--accent);"></i> Sync Code</span>
+          <i class="fa-solid fa-chevron-right" style="color:var(--text-muted); font-size:12px;"></i>
+        </button>
+      </div>
       <div class="card card-pad" style="margin-top:14px;" id="customer-install-card">
         <button class="spread" id="btn-install-profile" style="width:100%; background:none; border:none; padding:6px 0; color:var(--text);">
           <span class="row gap-sm"><i class="fa-solid fa-arrow-down-to-bracket" style="color:var(--accent);"></i> Install App</span>
@@ -1567,6 +1573,33 @@ select option{ background: var(--surface); color: var(--text); }
   </div>
 </div>
 
+<!-- Sync Code sheet -->
+<div class="overlay" id="overlay-sync-code">
+  <div class="sheet" style="max-width:420px;">
+    <div class="sheet-handle"></div>
+    <div class="sheet-header"><h3>Sync Code</h3><button class="icon-btn" aria-label="Close" onclick="closeSheet('overlay-sync-code')"><i class="fa-solid fa-xmark"></i></button></div>
+    <p class="text-muted" style="font-size:13px; margin:0 0 14px;">You're automatically connected to today's live shop code. Only enter a different code if the owner asks you to.</p>
+    <div class="sync-code-box">
+      <i class="fa-solid fa-tower-broadcast" style="font-size:22px;"></i>
+      <div>
+        <div style="font-size:11px; opacity:.8; text-transform:uppercase; letter-spacing:.06em; font-weight:700;">Connected code</div>
+        <div class="code" id="customer-sync-code-display">--------</div>
+      </div>
+      <div style="margin-left:auto; text-align:right;">
+        <div class="conn-status" id="customer-sync-conn-status"><span class="dot"></span>Live</div>
+      </div>
+    </div>
+    <div class="field" style="margin-top:16px;">
+      <label for="manual-sync-code">Enter an 8-digit code</label>
+      <div class="input-wrap">
+        <i class="fa-solid fa-keyboard"></i>
+        <input type="text" id="manual-sync-code" inputmode="numeric" pattern="[0-9]*" maxlength="8" placeholder="12072026">
+      </div>
+    </div>
+    <button class="btn btn-primary btn-block" style="margin-top:12px;" id="btn-connect-code"><i class="fa-solid fa-plug"></i> Connect</button>
+  </div>
+</div>
+
 </div>
 <script>
 /* ============================================================
@@ -1578,24 +1611,28 @@ select option{ background: var(--surface); color: var(--text); }
 
    CLOUD ADAPTER (real cross-device sync, zero backend to run):
    All of today's shop data (menu, orders, feedback, shop status...)
-   lives in ONE shared JSON document, hosted for free on jsonblob.com
-   - a keyless, CORS-open JSON storage service with no signup. The
-   Owner's device creates that document once, the first time the
-   Owner opens the dashboard on a given day, and the document's own
-   id becomes today's sync code (shown as e.g. "12JUL2026-K3F9",
-   date-stamped so it's obvious it rotates every 24 hours). Anyone
-   who enters that code, taps a shared link, or scans the Owner's QR
-   code opens the exact same document - real cross-device live sync,
-   not just same-browser tricks.
+   lives in ONE shared key/value record on kvdb.io - a free, keyless,
+   CORS-open store where WE choose the key instead of it handing back
+   a random id. The key is simply today's 8-digit numeric date code
+   (e.g. "12072026" for 12 Jul 2026), so it's fully deterministic:
+   the Owner's device and every Customer device compute the exact
+   same shared-room URL from the same code, with zero lookup step.
+   One Owner device creates/owns the room; unlimited Customer
+   devices - different phones, different networks, anywhere - join
+   the same live room automatically just by opening the app, because
+   the code is always just "today's date". No typing required for
+   the common case; a manual "Sync Code" entry is only there for the
+   rare case of connecting to a different day's code on request.
 
-   Every connected screen polls the shared document every few
-   seconds and pushes its own changes back to it, so Owner and
-   Customer devices anywhere - different phones, different networks
-   - stay in sync automatically. Instant local echo (BroadcastChannel
-   + storage event) is layered on top so same-device/same-browser
-   tabs update immediately without waiting on the poll. If the
-   network is unreachable, everything falls back to localStorage
-   only, so the app still works offline on one device.
+   Every connected screen polls the shared record every few seconds
+   and pushes its own changes back to it, so Owner and Customer
+   devices stay in sync automatically. Instant local echo
+   (BroadcastChannel + storage event) is layered on top so same-
+   device/same-browser tabs update immediately without waiting on
+   the poll. If the network is unreachable, everything falls back to
+   localStorage only, so the app still works offline on one device -
+   and `ready` always resolves within a few seconds no matter what,
+   so the app can never hang on a "loading" screen.
    ============================================================ */
 
 const SYNC_NAMESPACE = 'petpuja_v1';
@@ -1687,128 +1724,144 @@ class LocalAdapter {
 /* ============================================================
    Sync Code
    ------------------------------------------------------------
-   The code is DATE-STAMPED-CODE, e.g. "12JUL2026-K3F9": the date
-   part makes it obvious the code rotates every 24 hours, and the
-   4-character suffix is the real identifier of today's shared
-   cloud room (see CloudAdapter below) - so the code isn't just
-   cosmetic, entering/scanning it is what actually connects a
-   device to the right shared room.
+   The code is an 8-digit NUMBER ONLY, e.g. "12072026" (12 Jul 2026,
+   DDMMYYYY). It rotates automatically every 24 hours because it's
+   just today's date - and it doubles as the actual shared-room key
+   (see CloudAdapter below), so typing today's 8-digit code on any
+   device is all that's needed to join the Owner's live room. One
+   Owner device creates/owns the room for the room; unlimited
+   Customer devices can join the same 8-digit code at the same time.
    ============================================================ */
-function formatSyncCode(dateStamp, roomToken){
-  return `${dateStamp}-${roomToken}`;
-}
-
 function todayDateStamp(date = new Date()){
-  const MONTHS = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
   const d = String(date.getDate()).padStart(2, '0');
-  const m = MONTHS[date.getMonth()];
+  const m = String(date.getMonth() + 1).padStart(2, '0');
   const y = date.getFullYear();
   return `${d}${m}${y}`;
 }
 
-function randomRoomToken(){
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no ambiguous chars
-  let out = '';
-  for (let i = 0; i < 4; i++) out += chars[Math.floor(Math.random() * chars.length)];
-  return out;
+function isValidSyncCode(code){
+  return /^\d{8}$/.test((code || '').trim());
 }
 
 const CLOUD_POLL_MS = 4000; // how often we check the shared room for changes
-const OWNER_ROOM_KEY = 'petpuja_owner_room'; // { dateStamp, roomToken, blobId } for rooms THIS device created as Owner
-const JOINED_ROOM_KEY = 'petpuja_joined_room'; // { dateStamp, roomToken, blobId } for a room this device joined via code/QR
+const READY_TIMEOUT_MS = 3500; // absolute cap on boot time - never let the app hang
+// kvdb.io: free, keyless, CORS-open key/value store where WE choose the
+// key (unlike jsonblob.com/jsonbin.io, which hand back a random id you
+// must already know). That's what makes a plain numeric code work as a
+// real shared room: every device that types today's 8-digit code derives
+// the exact same URL, with no lookup step and no prior local state
+// needed - true "one owner, many customers, any device, anywhere" sync.
+const KV_BUCKET = 'https://kvdb.io/PetPujaSyncBucket9x2Q/';
 
 /* ------------------------------------------------------------
    CloudAdapter - real cross-device sync over a free, keyless
-   JSON document host (jsonblob.com). Wraps a LocalAdapter for
-   instant same-device echo + offline fallback, and layers a
-   shared remote document + polling on top for true multi-device
-   live sync, matching the exact shape every screen already
-   expects (get/set/push/updateInList/subscribe/subscribeAll) -
-   so nothing above this file had to change.
+   key/value store. Wraps a LocalAdapter for instant same-device
+   echo + offline fallback, and layers a shared remote document +
+   polling on top for true multi-device live sync, matching the
+   exact shape every screen already expects (get/set/push/
+   updateInList/subscribe/subscribeAll) - so nothing above this
+   file had to change.
 
-   Because jsonblob.com hands out a random id for every document
-   it creates (there's no way to ask for a specific id without an
-   account), the ONE device that first needs a shared room - the
-   Owner, opening the dashboard - creates it and remembers the
-   resulting id for the rest of the day. That id (shortened to a
-   4-character token) becomes part of today's sync code. Any other
-   device - a customer scanning the QR code, or typing the code in
-   manually - looks up that same id and joins the exact same room.
-   This is the only correct way to do this without a login system:
-   someone has to create the shared space first, and everyone else
-   needs to be told where it is.
+   The room key is simply today's 8-digit date code, so it's
+   deterministic: the Owner's device and every Customer device
+   compute the exact same remote URL from the same code, with no
+   "ask the server what my id is" round trip required to join.
+   `ready` ALWAYS resolves within READY_TIMEOUT_MS even if the
+   network is completely unreachable, so the app can never hang on
+   a boot screen - it just falls back to local-only mode and keeps
+   retrying quietly in the background.
 ------------------------------------------------------------- */
 class CloudAdapter {
   constructor(namespace){
     this.local = new LocalAdapter(namespace);
     this.role = 'owner'; // 'owner' | 'customer' - set via setRole() before use
     this.dateStamp = todayDateStamp();
-    this.roomToken = null;
-    this.blobUrl = null;
+    this.roomCode = null;
     this.remoteDoc = {};
-    this.online = true;
+    this.online = false;
     this._readyResolve = null;
+    this._readyDone = false;
     this.ready = new Promise((resolve) => { this._readyResolve = resolve; });
     this._pollHandle = null;
     setInterval(() => this._checkDateRotation(), 60 * 1000);
   }
 
-  // Called once, early, by App init - determines whether this device
-  // is the Owner (creates/owns today's room) or a Customer (joins an
-  // existing room, either the one already known on this device or one
-  // supplied via a code/QR link).
+  _resolveReady(){
+    if (this._readyDone) return;
+    this._readyDone = true;
+    this._readyResolve();
+  }
+
+  _kvUrl(code){ return KV_BUCKET + 'room' + code; }
+
+  // Called once, early, by App init. `explicitCode` is an 8-digit code a
+  // Customer typed in or scanned via QR. Guarded by a hard timeout so a
+  // slow/unreachable network can NEVER leave the app stuck on the splash
+  // screen - it always falls through to local-only mode instead.
   async start(explicitCode){
-    if (explicitCode){
-      const parsed = this._parseCode(explicitCode);
-      if (parsed){
-        this.dateStamp = parsed.dateStamp;
-        this.roomToken = parsed.roomToken;
-        await this._joinKnownRoom();
-        this._readyResolve();
-        this._startPolling();
+    const timeoutGuard = new Promise((resolve) => setTimeout(resolve, READY_TIMEOUT_MS));
+    await Promise.race([this._doStart(explicitCode), timeoutGuard]);
+    this._resolveReady();
+    this._startPolling();
+  }
+
+  async _doStart(explicitCode){
+    try{
+      if (explicitCode && isValidSyncCode(explicitCode)){
+        this.roomCode = explicitCode;
+        const ok = await this._pullRemote();
+        this.online = ok;
+        if (ok) this._writeSaved(JOINED_ROOM_KEY, { dateStamp: this.roomCode, code: this.roomCode });
         return;
       }
-    }
 
-    const savedOwner = this._readSaved(OWNER_ROOM_KEY);
-    const savedJoined = this._readSaved(JOINED_ROOM_KEY);
+      if (this.role === 'owner'){
+        // The Owner's room code IS today's date - always deterministic,
+        // never random, so re-opening the app (or a second Owner tab)
+        // always lands on the exact same shared room automatically.
+        this.roomCode = this.dateStamp;
+        const seed = await this._buildSeedFromLocal();
+        // Try to fetch an existing room first (in case it already has
+        // today's data from earlier), else seed it fresh.
+        const existed = await this._pullRemote();
+        if (!existed){
+          await this._pushRemoteData(seed);
+          this.remoteDoc = seed;
+          this.online = true;
+        }
+        this._writeSaved(OWNER_ROOM_KEY, { dateStamp: this.dateStamp, code: this.roomCode });
+        return;
+      }
 
-    if (savedOwner && savedOwner.dateStamp === this.dateStamp){
-      // This device already created today's room earlier (e.g. Owner
-      // reopening the app) - reconnect to the same one.
-      this.roomToken = savedOwner.roomToken;
-      this.blobUrl = `https://jsonblob.com/api/jsonBlob/${savedOwner.blobId}`;
+      // Customer with no explicit code: the room code is always just
+      // today's date (deterministic and public - not a secret), so a
+      // plain "Customer" tap connects automatically with zero typing,
+      // exactly like the Owner side. If the Owner's device happens to be
+      // offline, _pullRemote() below simply won't find the room (404)
+      // and the shop correctly reads as "closed" until the Owner is back.
+      this.roomCode = this.dateStamp;
       const ok = await this._pullRemote();
-      if (!ok) await this._createOwnerRoom(); // stale id upstream - recreate
-    } else if (savedJoined && savedJoined.dateStamp === this.dateStamp){
-      // A customer device that already joined today's room earlier.
-      this.roomToken = savedJoined.roomToken;
-      this.blobUrl = `https://jsonblob.com/api/jsonBlob/${savedJoined.blobId}`;
-      const ok = await this._pullRemote();
-      if (!ok) this.online = false;
-    } else if (this.role === 'owner'){
-      await this._createOwnerRoom();
-    } else {
-      // A customer with no known room and no code yet - nothing to
-      // connect to until the Owner has created today's room and shared
-      // the code/QR. Fall back to local-only until then.
+      this.online = ok;
+      if (ok) this._writeSaved(JOINED_ROOM_KEY, { dateStamp: this.dateStamp, code: this.roomCode });
+    }catch(err){
       this.online = false;
+      console.info('Pet Puja: cloud sync unavailable, using this device only for now.', err && err.message);
     }
-
-    this._readyResolve();
-    this._startPolling();
   }
 
   setRole(role){ this.role = role; }
 
-  getSyncCode(){
-    return this.roomToken ? formatSyncCode(this.dateStamp, this.roomToken) : null;
-  }
+  getSyncCode(){ return this.roomCode; }
 
-  _parseCode(code){
-    const match = /^(\d{2}[A-Z]{3}\d{4})-([A-Z0-9]{4})$/.exec((code || '').trim().toUpperCase());
-    if (!match) return null;
-    return { dateStamp: match[1], roomToken: match[2] };
+  // Explicit join, e.g. a customer typing a code into the "Connect"
+  // field or scanning the Owner's QR code.
+  async joinWithCode(code){
+    if (!isValidSyncCode(code)) return false;
+    this.roomCode = code;
+    const ok = await this._pullRemote();
+    this.online = ok;
+    if (ok) this._writeSaved(JOINED_ROOM_KEY, { dateStamp: code, code });
+    return ok;
   }
 
   _roomKeyFor(role){ return role === 'owner' ? OWNER_ROOM_KEY : JOINED_ROOM_KEY; }
@@ -1824,71 +1877,25 @@ class CloudAdapter {
     const fresh = todayDateStamp();
     if (fresh === this.dateStamp) return;
     this.dateStamp = fresh;
-    this.roomToken = null;
-    this.blobUrl = null;
     this.remoteDoc = {};
     if (this.role === 'owner'){
-      await this._createOwnerRoom();
-    } else {
-      this.online = false; // wait for a fresh code from the Owner
-    }
-  }
-
-  async _createOwnerRoom(){
-    try{
-      const seedData = await this._buildSeedFromLocal();
-      const res = await fetch('https://jsonblob.com/api/jsonBlob', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(seedData)
-      });
-      const loc = res.headers.get('Location') || res.headers.get('location');
-      if (loc){
-        const blobId = loc.split('/').pop();
-        this.roomToken = randomRoomToken();
-        this.blobUrl = loc;
-        this.remoteDoc = seedData;
-        this.online = true;
-        this._writeSaved(OWNER_ROOM_KEY, { dateStamp: this.dateStamp, roomToken: this.roomToken, blobId });
-      } else {
-        this.online = false;
+      this.roomCode = this.dateStamp;
+      const seed = await this._buildSeedFromLocal();
+      const existed = await this._pullRemote();
+      if (!existed){
+        await this._pushRemoteData(seed);
+        this.remoteDoc = seed;
       }
-    }catch(err){
-      this.online = false;
-      console.info('Pet Puja: cloud sync unavailable, using this device only for now.', err && err.message);
-    }
-  }
-
-  async _joinKnownRoom(){
-    // A customer entered/scanned a code for today. We don't have the
-    // real blobId from the code alone (the token is intentionally
-    // short), so this path is used when the app already recognizes the
-    // code because this device created it (Owner re-entering their own
-    // code) or already joined it earlier today.
-    const savedOwner = this._readSaved(OWNER_ROOM_KEY);
-    const savedJoined = this._readSaved(JOINED_ROOM_KEY);
-    const match = [savedOwner, savedJoined].find(s => s && s.dateStamp === this.dateStamp && s.roomToken === this.roomToken);
-    if (match){
-      this.blobUrl = `https://jsonblob.com/api/jsonBlob/${match.blobId}`;
+      this.online = true;
+      this._writeSaved(OWNER_ROOM_KEY, { dateStamp: this.dateStamp, code: this.roomCode });
+    } else {
+      // Same deterministic derivation as _doStart: a Customer always
+      // tries today's fresh date code automatically at midnight rollover.
+      this.roomCode = this.dateStamp;
       const ok = await this._pullRemote();
       this.online = ok;
-      if (ok) this._writeSaved(this._roomKeyFor(this.role), match);
-    } else {
-      this.online = false;
+      if (ok) this._writeSaved(JOINED_ROOM_KEY, { dateStamp: this.dateStamp, code: this.roomCode });
     }
-  }
-
-  // Called when a customer opens a QR/shared link that embeds the real
-  // blobId directly (see the QR code page), so joining works on a
-  // completely fresh device with zero prior local state.
-  async joinRoomDirect(dateStamp, roomToken, blobId){
-    this.dateStamp = dateStamp;
-    this.roomToken = roomToken;
-    this.blobUrl = `https://jsonblob.com/api/jsonBlob/${blobId}`;
-    const ok = await this._pullRemote();
-    this.online = ok;
-    if (ok) this._writeSaved(JOINED_ROOM_KEY, { dateStamp, roomToken, blobId });
-    return ok;
   }
 
   async _buildSeedFromLocal(){
@@ -1899,11 +1906,14 @@ class CloudAdapter {
   }
 
   async _pullRemote(){
-    if (!this.blobUrl) return false;
+    if (!this.roomCode) return false;
     try{
-      const res = await fetch(this.blobUrl, { cache: 'no-store' });
+      const res = await fetch(this._kvUrl(this.roomCode), { cache: 'no-store' });
+      if (res.status === 404){ this.online = (this.role === 'owner'); return false; }
       if (!res.ok){ this.online = false; return false; }
-      const data = await res.json();
+      const text = await res.text();
+      let data = {};
+      try{ data = text ? JSON.parse(text) : {}; }catch(_){ data = {}; }
       this.online = true;
       this._mergeRemote(data || {});
       return true;
@@ -1927,23 +1937,21 @@ class CloudAdapter {
     });
   }
 
-  async _pushRemote(){
-    if (!this.blobUrl) return;
+  async _pushRemoteData(doc){
+    if (!this.roomCode) return;
     try{
-      const res = await fetch(this.blobUrl, {
+      const res = await fetch(this._kvUrl(this.roomCode), {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(this.remoteDoc)
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify(doc)
       });
       this.online = res.ok;
-      if (!res.ok && res.status === 404 && this.role === 'owner'){
-        // room vanished upstream (rare) - recreate it fresh under a new code
-        await this._createOwnerRoom();
-      }
     }catch(err){
       this.online = false;
     }
   }
+
+  async _pushRemote(){ return this._pushRemoteData(this.remoteDoc); }
 
   _startPolling(){
     if (this._pollHandle) clearInterval(this._pollHandle);
@@ -1960,9 +1968,7 @@ class CloudAdapter {
   // code immediately) then does an immediate remote pull.
   async forceRefresh(){
     await this._checkDateRotation();
-    if (!this.blobUrl){
-      // No shared room known yet on this device (e.g. customer hasn't
-      // joined one) - nothing to pull, but not an error either.
+    if (!this.roomCode){
       return this.online;
     }
     return this._pullRemote();
@@ -2006,6 +2012,8 @@ class CloudAdapter {
   isOnline(){ return this.online; }
 }
 
+const OWNER_ROOM_KEY = 'petpuja_owner_room';
+const JOINED_ROOM_KEY = 'petpuja_joined_room';
 const PetPujaSync = new CloudAdapter(SYNC_NAMESPACE);
 
 /* ============================================================
@@ -2026,6 +2034,10 @@ async function getActiveCustomerCount(){
   return Object.values(map).filter(ts => now - ts < PRESENCE_TTL_MS).length;
 }
 
+function getDailySyncCode(){
+  return PetPujaSync.getSyncCode() || todayDateStamp();
+}
+window.getDailySyncCode = getDailySyncCode;
 window.PetPujaSync = PetPujaSync;
 window.registerPresence = registerPresence;
 window.getActiveCustomerCount = getActiveCustomerCount;
@@ -3975,6 +3987,27 @@ const App = {
   async init(){
     applyTheme(getTheme());
     initRippleDelegation();
+
+    // Determine this device's starting role and whether a sync code was
+    // supplied via URL (QR scan / shared link), THEN start the sync
+    // engine before touching any data - this is the one call that was
+    // previously missing, which is what caused the app to hang forever
+    // on the splash/boot screen (every PetPujaSync.get/set was waiting
+    // on a "ready" promise that nothing ever resolved).
+    const params = new URLSearchParams(location.search);
+    const urlCode = params.get('code');
+    const wasOwner = localStorage.getItem('petpuja_owner_authed') === '1';
+    PetPujaSync.setRole(wasOwner ? 'owner' : 'customer');
+
+    try{
+      await PetPujaSync.start(urlCode);
+    }catch(err){
+      // start() already has its own internal timeout, but this belt-
+      // and-braces catch guarantees init() itself can never throw and
+      // strand the app on the splash screen.
+      console.info('Pet Puja: sync start failed, continuing offline.', err && err.message);
+    }
+
     await ensureSeeded();
 
     this.setupPwa();
@@ -3983,6 +4016,7 @@ const App = {
     this.bindInstallPrompt();
     this.bindGenericSheetClosers();
     this.bindBackButton();
+    this.bindConnectScreen();
 
     Owner.init();
     Owner.bindMenuForm();
@@ -4136,6 +4170,49 @@ const App = {
     window.addEventListener('popstate', () => this.handlePopState());
   },
 
+  bindConnectScreen(){
+    const openBtn = document.getElementById('btn-open-sync-code');
+    if (openBtn){
+      openBtn.addEventListener('click', () => {
+        this.refreshSyncCodeSheet();
+        openSheet('overlay-sync-code');
+      });
+    }
+    const connectBtn = document.getElementById('btn-connect-code');
+    if (connectBtn){
+      connectBtn.addEventListener('click', async () => {
+        const input = document.getElementById('manual-sync-code');
+        const code = input.value.trim();
+        if (!isValidSyncCode(code)){
+          showToast('Enter the 8-digit numeric code exactly', 'error');
+          return;
+        }
+        connectBtn.disabled = true;
+        const ok = await PetPujaSync.joinWithCode(code);
+        connectBtn.disabled = false;
+        if (ok){
+          showToast('Connected!', 'success');
+          input.value = '';
+          this.refreshSyncCodeSheet();
+          Customer.renderShopStatus();
+          Customer.renderMenu();
+        } else {
+          showToast('That code isn\'t online right now', 'error');
+        }
+      });
+    }
+  },
+
+  refreshSyncCodeSheet(){
+    const codeEl = document.getElementById('customer-sync-code-display');
+    const statusEl = document.getElementById('customer-sync-conn-status');
+    if (!codeEl || !statusEl) return;
+    codeEl.textContent = PetPujaSync.getSyncCode() || todayDateStamp();
+    const online = typeof PetPujaSync.isOnline === 'function' ? PetPujaSync.isOnline() : true;
+    statusEl.classList.toggle('offline', !online);
+    statusEl.innerHTML = `<span class="dot"></span>${online ? 'Live' : 'Offline'}`;
+  },
+
   bindWelcomeScreen(){
     document.getElementById('btn-enter-customer').addEventListener('click', () => this.showScreen('customer-screen'));
     document.getElementById('btn-enter-owner').addEventListener('click', () => this.showScreen('owner-login-screen'));
@@ -4161,6 +4238,14 @@ const App = {
   },
 
   goToOwnerDashboard(){
+    // Switch the sync engine into Owner mode (creates/owns today's
+    // numeric room code) if it isn't already, so logging in as Owner on
+    // a device that booted as a plain Customer immediately starts
+    // broadcasting today's shared room.
+    if (PetPujaSync.role !== 'owner'){
+      PetPujaSync.setRole('owner');
+      PetPujaSync.start().catch(() => {});
+    }
     this.showScreen('owner-screen');
     Owner.navigateTo('dashboard');
   },
@@ -4350,7 +4435,31 @@ const App = {
   }
 };
 
-document.addEventListener('DOMContentLoaded', () => App.init());
+document.addEventListener('DOMContentLoaded', () => {
+  // Absolute failsafe: no matter what happens inside App.init() (a
+  // thrown error, a slow/unreachable network, anything) the splash
+  // screen is force-hidden after 6s so the app can never appear stuck
+  // "booting" forever. showScreen() itself is a no-op if a screen is
+  // already active, so this never fights with a normal, on-time boot.
+  const failSafe = setTimeout(() => {
+    const splash = document.getElementById('splash-screen');
+    if (splash && !splash.classList.contains('fade-out')){
+      splash.classList.add('fade-out');
+      const wasOwner = localStorage.getItem('petpuja_owner_authed') === '1';
+      if (wasOwner && typeof App.goToOwnerDashboard === 'function'){
+        App.goToOwnerDashboard();
+      } else if (typeof App.showScreen === 'function'){
+        App.showScreen('welcome-screen');
+      }
+    }
+  }, 6000);
+
+  Promise.resolve(App.init())
+    .catch((err) => {
+      console.error('Pet Puja: App.init() failed, falling back to welcome screen.', err);
+    })
+    .finally(() => clearTimeout(failSafe));
+});
 window.App = App;
 
 </script>
