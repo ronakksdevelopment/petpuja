@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, interactive-widget=resizes-content">
 <title>Pet Puja - Tea Time | Indian Chai</title>
 <meta name="description" content="Order fresh Indian chai live from Pet Puja. Browse the menu, track your order, and get instant updates.">
 
@@ -22,6 +22,14 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700;9..144,900&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+
+<!-- PeerJS: free, keyless, hosted WebRTC signalling broker. Used ONLY to
+     hand two devices each other's connection info; once matched, all
+     shop data (menu, orders, feedback...) flows peer-to-peer directly
+     between the Owner's phone and each Customer's device, never through
+     a third-party database. Loaded eagerly, in parallel with everything
+     else, so it's ready the instant App.init() wants to open a connection. -->
+<script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 
 <style>
 /* ============================================================
@@ -1043,6 +1051,7 @@ select option{ background: var(--surface); color: var(--text); }
     aspect-ratio: 9 / 16;
     height: auto;
     max-height: 100vh;
+    max-height: 100dvh;
     background: var(--bg);
     box-shadow: 0 0 0 1px var(--border), 0 30px 80px -20px rgba(0,0,0,.35);
     border-radius: 28px;
@@ -1578,22 +1587,22 @@ select option{ background: var(--surface); color: var(--text); }
   <div class="sheet" style="max-width:420px;">
     <div class="sheet-handle"></div>
     <div class="sheet-header"><h3>Sync Code</h3><button class="icon-btn" aria-label="Close" onclick="closeSheet('overlay-sync-code')"><i class="fa-solid fa-xmark"></i></button></div>
-    <p class="text-muted" style="font-size:13px; margin:0 0 14px;">You're automatically connected to today's live shop code. Only enter a different code if the owner asks you to.</p>
+    <p class="text-muted" style="font-size:13px; margin:0 0 14px;">You're automatically connected to today's live shop code over a direct device-to-device link. Only enter a different code if the owner asks you to.</p>
     <div class="sync-code-box">
       <i class="fa-solid fa-tower-broadcast" style="font-size:22px;"></i>
       <div>
         <div style="font-size:11px; opacity:.8; text-transform:uppercase; letter-spacing:.06em; font-weight:700;">Connected code</div>
-        <div class="code" id="customer-sync-code-display">--------</div>
+        <div class="code" id="customer-sync-code-display">-----</div>
       </div>
       <div style="margin-left:auto; text-align:right;">
         <div class="conn-status" id="customer-sync-conn-status"><span class="dot"></span>Live</div>
       </div>
     </div>
     <div class="field" style="margin-top:16px;">
-      <label for="manual-sync-code">Enter an 8-digit code</label>
+      <label for="manual-sync-code">Enter a 5-character code</label>
       <div class="input-wrap">
         <i class="fa-solid fa-keyboard"></i>
-        <input type="text" id="manual-sync-code" inputmode="numeric" pattern="[0-9]*" maxlength="8" placeholder="12072026">
+        <input type="text" id="manual-sync-code" inputmode="text" autocapitalize="characters" autocomplete="off" spellcheck="false" maxlength="5" placeholder="3F9K2" style="text-transform:uppercase; letter-spacing:.08em;">
       </div>
     </div>
     <button class="btn btn-primary btn-block" style="margin-top:12px;" id="btn-connect-code"><i class="fa-solid fa-plug"></i> Connect</button>
@@ -1609,30 +1618,47 @@ select option{ background: var(--surface); color: var(--text); }
    in this app talks only to the `PetPujaSync` interface below
    (get/set/subscribe), never to the transport directly.
 
-   CLOUD ADAPTER (real cross-device sync, zero backend to run):
-   All of today's shop data (menu, orders, feedback, shop status...)
-   lives in ONE shared key/value record on kvdb.io - a free, keyless,
-   CORS-open store where WE choose the key instead of it handing back
-   a random id. The key is simply today's 8-digit numeric date code
-   (e.g. "12072026" for 12 Jul 2026), so it's fully deterministic:
-   the Owner's device and every Customer device compute the exact
-   same shared-room URL from the same code, with zero lookup step.
-   One Owner device creates/owns the room; unlimited Customer
-   devices - different phones, different networks, anywhere - join
-   the same live room automatically just by opening the app, because
-   the code is always just "today's date". No typing required for
-   the common case; a manual "Sync Code" entry is only there for the
-   rare case of connecting to a different day's code on request.
+   P2P ADAPTER (real cross-device sync, zero backend to run):
+   Shop data (menu, orders, feedback, shop status...) is synced
+   directly device-to-device over WebRTC using PeerJS - the same
+   proven "multi-user connect" trick as SyncNotes: PeerJS's free
+   hosted broker is used ONLY to hand two devices each other's
+   connection info (signalling); once matched, everything after
+   that flows peer-to-peer, straight between the Owner's phone
+   and each Customer's device. No database, no server of ours,
+   nothing to host or pay for.
 
-   Every connected screen polls the shared record every few seconds
-   and pushes its own changes back to it, so Owner and Customer
-   devices stay in sync automatically. Instant local echo
-   (BroadcastChannel + storage event) is layered on top so same-
-   device/same-browser tabs update immediately without waiting on
-   the poll. If the network is unreachable, everything falls back to
-   localStorage only, so the app still works offline on one device -
-   and `ready` always resolves within a few seconds no matter what,
-   so the app can never hang on a "loading" screen.
+   One Owner device is the HOST and claims a deterministic Peer
+   ID built from today's 5-character shop code, e.g.
+   "petpuja-shop-3F9K2". Every Customer device is a GUEST with a
+   random Peer ID that simply dials that host id directly -
+   there's no lookup step, no server-assigned room, nothing to
+   type for the common case, because both sides compute the
+   exact same host id from the exact same day code.
+
+   The Owner is the source of truth for the day: on connect, a
+   Customer's device receives the Owner's full current state in
+   one shot, then every change either side makes afterwards is
+   pushed instantly to every open connection AND relayed by the
+   Host to every other connected Customer - the same
+   "hub-and-spoke" relay pattern SyncNotes uses for its live text
+   editor, just carrying the shop's data instead of note text.
+
+   On top of that instant push/relay, a lightweight 1-second
+   heartbeat loop keeps re-confirming state in both directions so
+   the UI is always self-healing and never silently drifts, even
+   across brief WebRTC hiccups (Wi-Fi handoff, backgrounded tab,
+   etc.) - this is in addition to, not instead of, the instant
+   push, so updates normally feel immediate and the loop is just
+   a safety net.
+
+   If no P2P connection is available yet (Owner hasn't opened the
+   app today, or this device is still negotiating), everything
+   falls back to this device's own localStorage, so the app still
+   works standalone - and `ready` resolves instantly (this
+   device's own data is always usable right away), while the
+   actual P2P handshake finishes in the background and is never
+   allowed to block the app's first paint.
    ============================================================ */
 
 const SYNC_NAMESPACE = 'petpuja_v1';
@@ -1724,14 +1750,40 @@ class LocalAdapter {
 /* ============================================================
    Sync Code
    ------------------------------------------------------------
-   The code is an 8-digit NUMBER ONLY, e.g. "12072026" (12 Jul 2026,
-   DDMMYYYY). It rotates automatically every 24 hours because it's
-   just today's date - and it doubles as the actual shared-room key
-   (see CloudAdapter below), so typing today's 8-digit code on any
-   device is all that's needed to join the Owner's live room. One
-   Owner device creates/owns the room for the room; unlimited
-   Customer devices can join the same 8-digit code at the same time.
+   The code is a 5-character MIX OF DIGITS AND UPPERCASE LETTERS
+   (e.g. "3F9K2"), freshly and deterministically derived from
+   today's calendar date. It rotates automatically every 24 hours
+   - a brand new day always means a brand new code - but for any
+   given day it is 100% reproducible: every device that computes
+   "today's code" arrives at the exact same 5 characters with no
+   server round trip, which is what lets a plain "Customer" tap
+   dial straight into the Owner's live room with zero typing.
    ============================================================ */
+const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no 0/O/1/I - avoids look-alike mixups
+const CODE_LENGTH = 5;
+
+// Small deterministic string hash (djb2) -> stable across devices/sessions,
+// unlike Math.random(), so the SAME date always yields the SAME code.
+function _seedHash(str){
+  let h = 5381;
+  for (let i = 0; i < str.length; i++){
+    h = ((h << 5) + h + str.charCodeAt(i)) >>> 0;
+  }
+  return h >>> 0;
+}
+
+// Deterministic seeded PRNG (mulberry32) seeded from the hash above, so the
+// 5 characters it produces are the same on every device for the same day.
+function _mulberry32(seed){
+  let a = seed;
+  return function(){
+    a |= 0; a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
 function todayDateStamp(date = new Date()){
   const d = String(date.getDate()).padStart(2, '0');
   const m = String(date.getMonth() + 1).padStart(2, '0');
@@ -1739,51 +1791,80 @@ function todayDateStamp(date = new Date()){
   return `${d}${m}${y}`;
 }
 
-function isValidSyncCode(code){
-  return /^\d{8}$/.test((code || '').trim());
+// Turns today's date into today's 5-character shop code. Same formula,
+// every device, every time - that's the whole trick.
+function dailyRoomCode(date = new Date()){
+  const seed = _seedHash('petpuja-day-' + todayDateStamp(date));
+  const rnd = _mulberry32(seed);
+  let code = '';
+  for (let i = 0; i < CODE_LENGTH; i++){
+    code += CODE_ALPHABET[Math.floor(rnd() * CODE_ALPHABET.length)];
+  }
+  return code;
 }
 
-const CLOUD_POLL_MS = 4000; // how often we check the shared room for changes
-const READY_TIMEOUT_MS = 3500; // absolute cap on boot time - never let the app hang
-// kvdb.io: free, keyless, CORS-open key/value store where WE choose the
-// key (unlike jsonblob.com/jsonbin.io, which hand back a random id you
-// must already know). That's what makes a plain numeric code work as a
-// real shared room: every device that types today's 8-digit code derives
-// the exact same URL, with no lookup step and no prior local state
-// needed - true "one owner, many customers, any device, anywhere" sync.
-const KV_BUCKET = 'https://kvdb.io/PetPujaSyncBucket9x2Q/';
+function isValidSyncCode(code){
+  return /^[A-Z0-9]{5}$/.test((code || '').trim().toUpperCase());
+}
+
+function normalizeSyncCode(code){
+  return (code || '').trim().toUpperCase();
+}
+
+const READY_TIMEOUT_MS = 3000; // absolute cap on boot time - never let the app hang
+const HEARTBEAT_MS = 1000; // realtime self-healing loop, per-second as requested
+const PEER_ID_PREFIX = 'petpuja-shop-';
+
+// PeerJS's own free public broker, used only for signalling (device
+// discovery/handshake). No shop data ever passes through it - it just
+// introduces two devices to each other so they can open a direct WebRTC
+// channel. Same STUN set SyncNotes uses, for reliable NAT traversal.
+const PEER_CONFIG = {
+  config: {
+    iceServers: [
+      { urls: 'stun:stun.l.google.com:19302' },
+      { urls: 'stun:stun1.l.google.com:19302' },
+      { urls: 'stun:global.stun.twilio.com:3478' }
+    ]
+  },
+  debug: 0
+};
 
 /* ------------------------------------------------------------
-   CloudAdapter - real cross-device sync over a free, keyless
-   key/value store. Wraps a LocalAdapter for instant same-device
-   echo + offline fallback, and layers a shared remote document +
-   polling on top for true multi-device live sync, matching the
-   exact shape every screen already expects (get/set/push/
-   updateInList/subscribe/subscribeAll) - so nothing above this
-   file had to change.
+   P2PAdapter - real cross-device sync over direct WebRTC
+   (PeerJS), matching the exact shape every screen already
+   expects (get/set/push/updateInList/subscribe/subscribeAll) -
+   so nothing above this file had to change.
 
-   The room key is simply today's 8-digit date code, so it's
-   deterministic: the Owner's device and every Customer device
-   compute the exact same remote URL from the same code, with no
-   "ask the server what my id is" round trip required to join.
-   `ready` ALWAYS resolves within READY_TIMEOUT_MS even if the
-   network is completely unreachable, so the app can never hang on
-   a boot screen - it just falls back to local-only mode and keeps
-   retrying quietly in the background.
+   Wraps a LocalAdapter for instant same-device echo + full
+   offline fallback, and layers a live PeerJS mesh on top:
+   - Owner = host, deterministic id from today's code.
+   - Customer = guest, dials the host id directly.
+   - Host relays every update to all other connected guests.
+   - A 1s heartbeat re-confirms state in both directions.
 ------------------------------------------------------------- */
-class CloudAdapter {
+class P2PAdapter {
   constructor(namespace){
     this.local = new LocalAdapter(namespace);
     this.role = 'owner'; // 'owner' | 'customer' - set via setRole() before use
     this.dateStamp = todayDateStamp();
     this.roomCode = null;
-    this.remoteDoc = {};
-    this.online = false;
+    this.doc = {}; // authoritative local mirror of the shared shop document
+    this.online = false; // true once at least one live P2P connection exists
     this._readyResolve = null;
     this._readyDone = false;
     this.ready = new Promise((resolve) => { this._readyResolve = resolve; });
-    this._pollHandle = null;
-    setInterval(() => this._checkDateRotation(), 60 * 1000);
+    this._connectedResolve = null;
+    this._connectedDone = false;
+    this.connected = new Promise((resolve) => { this._connectedResolve = resolve; });
+
+    this.peer = null;
+    this.connections = new Map(); // peerId -> DataConnection (host: guests; guest: just the host)
+    this._heartbeatHandle = null;
+    this._dateCheckHandle = null;
+    this._explicitCode = null; // set when a Customer manually joins a non-default code
+
+    this._dateCheckHandle = setInterval(() => this._checkDateRotation(), 30 * 1000);
   }
 
   _resolveReady(){
@@ -1792,109 +1873,298 @@ class CloudAdapter {
     this._readyResolve();
   }
 
-  _kvUrl(code){ return KV_BUCKET + 'room' + code; }
+  _resolveConnected(){
+    if (this._connectedDone) return;
+    this._connectedDone = true;
+    this._connectedResolve();
+  }
 
-  // Called once, early, by App init. `explicitCode` is an 8-digit code a
-  // Customer typed in or scanned via QR. Guarded by a hard timeout so a
-  // slow/unreachable network can NEVER leave the app stuck on the splash
-  // screen - it always falls through to local-only mode instead.
+  setRole(role){ this.role = role; }
+  getSyncCode(){ return this.roomCode; }
+  isOnline(){ return this.online; }
+
+  _hostIdFor(code){ return PEER_ID_PREFIX + code; }
+
+  // Called once, early, by App init. `explicitCode` is a 5-character code a
+  // Customer typed in or scanned via QR. `ready` resolves on the very next
+  // tick (this device's own localStorage is always immediately usable), so
+  // the UI never waits on the network to paint. The actual WebRTC
+  // handshake runs in the background and resolves `connected` when it
+  // settles (matched, or genuinely gave up) - callers that specifically
+  // want to know "did we get a live P2P link" can await `connected`
+  // instead, guarded by its own hard timeout so a slow/unreachable network
+  // can never hang anything.
   async start(explicitCode){
+    this._resolveReady();
     const timeoutGuard = new Promise((resolve) => setTimeout(resolve, READY_TIMEOUT_MS));
     await Promise.race([this._doStart(explicitCode), timeoutGuard]);
-    this._resolveReady();
-    this._startPolling();
+    this._resolveConnected();
+    this._startHeartbeat();
   }
 
   async _doStart(explicitCode){
     try{
       if (explicitCode && isValidSyncCode(explicitCode)){
-        this.roomCode = explicitCode;
-        const ok = await this._pullRemote();
-        this.online = ok;
-        if (ok) this._writeSaved(JOINED_ROOM_KEY, { dateStamp: this.roomCode, code: this.roomCode });
+        this._explicitCode = normalizeSyncCode(explicitCode);
+        await this._connectAsCustomer(this._explicitCode);
         return;
       }
 
       if (this.role === 'owner'){
-        // The Owner's room code IS today's date - always deterministic,
-        // never random, so re-opening the app (or a second Owner tab)
-        // always lands on the exact same shared room automatically.
-        this.roomCode = this.dateStamp;
-        const seed = await this._buildSeedFromLocal();
-        // Try to fetch an existing room first (in case it already has
-        // today's data from earlier), else seed it fresh.
-        const existed = await this._pullRemote();
-        if (!existed){
-          await this._pushRemoteData(seed);
-          this.remoteDoc = seed;
-          this.online = true;
-        }
-        this._writeSaved(OWNER_ROOM_KEY, { dateStamp: this.dateStamp, code: this.roomCode });
+        await this._connectAsHost();
         return;
       }
 
       // Customer with no explicit code: the room code is always just
-      // today's date (deterministic and public - not a secret), so a
-      // plain "Customer" tap connects automatically with zero typing,
-      // exactly like the Owner side. If the Owner's device happens to be
-      // offline, _pullRemote() below simply won't find the room (404)
-      // and the shop correctly reads as "closed" until the Owner is back.
-      this.roomCode = this.dateStamp;
-      const ok = await this._pullRemote();
-      this.online = ok;
-      if (ok) this._writeSaved(JOINED_ROOM_KEY, { dateStamp: this.dateStamp, code: this.roomCode });
+      // today's derived code (deterministic and public - not a secret),
+      // so a plain "Customer" tap connects automatically with zero
+      // typing, exactly like the Owner side.
+      this.roomCode = dailyRoomCode();
+      await this._connectAsCustomer(this.roomCode);
     }catch(err){
       this.online = false;
-      console.info('Pet Puja: cloud sync unavailable, using this device only for now.', err && err.message);
+      console.info('Pet Puja: P2P sync unavailable, using this device only for now.', err && err.message);
     }
   }
 
-  setRole(role){ this.role = role; }
+  // ======= HOST (Owner) =======
+  async _connectAsHost(){
+    this._teardownPeer();
+    this.roomCode = dailyRoomCode();
+    const hostId = this._hostIdFor(this.roomCode);
 
-  getSyncCode(){ return this.roomCode; }
+    // Seed our authoritative doc from whatever this device already has
+    // locally (e.g. yesterday's leftover state, or a fresh install).
+    this.doc = await this._buildSeedFromLocal();
 
-  // Explicit join, e.g. a customer typing a code into the "Connect"
-  // field or scanning the Owner's QR code.
-  async joinWithCode(code){
-    if (!isValidSyncCode(code)) return false;
+    // If the PeerJS library itself failed to load (CDN blocked, offline
+    // on first load, etc.), never throw - just stay in local-only mode
+    // and let the heartbeat/reconnect loop keep retrying quietly.
+    if (typeof Peer === 'undefined'){
+      this.online = false;
+      this._writeSaved(OWNER_ROOM_KEY, { dateStamp: this.dateStamp, code: this.roomCode });
+      return;
+    }
+
+    await new Promise((resolve) => {
+      let settled = false;
+      const finish = () => { if (!settled){ settled = true; resolve(); } };
+
+      let peer;
+      try{
+        peer = new Peer(hostId, PEER_CONFIG);
+      }catch(err){
+        this.online = false;
+        finish();
+        return;
+      }
+      this.peer = peer;
+
+      peer.on('open', () => {
+        this.online = true;
+        this._writeSaved(OWNER_ROOM_KEY, { dateStamp: this.dateStamp, code: this.roomCode });
+        finish();
+      });
+
+      peer.on('connection', (conn) => this._acceptGuest(conn));
+
+      peer.on('error', (err) => {
+        // 'unavailable-id' means another tab/device already owns today's
+        // host id (e.g. two Owner devices) - that's fine, this device just
+        // won't be the primary host; it still works fully offline.
+        this.online = false;
+        finish();
+      });
+
+      peer.on('disconnected', () => { this.online = this.connections.size > 0; });
+
+      setTimeout(finish, READY_TIMEOUT_MS - 200);
+    });
+  }
+
+  _acceptGuest(conn){
+    let opened = false;
+    const openIt = () => {
+      if (opened) return;
+      opened = true;
+      this.connections.set(conn.peer, conn);
+      this.online = true;
+      // Send the guest our full current document immediately - this is
+      // the "join = instant full state" handshake.
+      this._safeSend(conn, { type: 'full-sync', doc: this.doc });
+    };
+
+    conn.on('open', openIt);
+
+    conn.on('data', (payload) => {
+      if (!opened) openIt();
+      if (!payload || typeof payload !== 'object') return;
+
+      if (payload.type === 'request-sync'){
+        this._safeSend(conn, { type: 'full-sync', doc: this.doc });
+      } else if (payload.type === 'set'){
+        // A guest wrote a key (e.g. placed an order) - merge it into the
+        // host's authoritative doc, then fan it out to every OTHER guest
+        // instantly, hub-and-spoke, exactly like SyncNotes relays text.
+        this.doc[payload.key] = payload.value;
+        this.local._notify(payload.key, payload.value);
+        try{ localStorage.setItem(this.local._storageKey(payload.key), JSON.stringify(payload.value)); }catch(_){}
+        this.connections.forEach((c, id) => {
+          if (id !== conn.peer) this._safeSend(c, { type: 'set', key: payload.key, value: payload.value });
+        });
+      } else if (payload.type === 'heartbeat'){
+        this._safeSend(conn, { type: 'full-sync', doc: this.doc });
+      }
+    });
+
+    conn.on('close', () => {
+      this.connections.delete(conn.peer);
+      this.online = this.connections.size > 0 || (this.peer && this.peer.open);
+    });
+
+    conn.on('error', () => { this.connections.delete(conn.peer); });
+  }
+
+  // ======= GUEST (Customer) =======
+  async _connectAsCustomer(code){
+    this._teardownPeer();
     this.roomCode = code;
-    const ok = await this._pullRemote();
-    this.online = ok;
-    if (ok) this._writeSaved(JOINED_ROOM_KEY, { dateStamp: code, code });
-    return ok;
+    const hostId = this._hostIdFor(code);
+
+    // Same defensive guard as the host path - a blocked/failed PeerJS
+    // load should degrade to local-only, never throw.
+    if (typeof Peer === 'undefined'){
+      this.online = false;
+      return;
+    }
+
+    await new Promise((resolve) => {
+      let settled = false;
+      const finish = () => { if (!settled){ settled = true; resolve(); } };
+
+      let peer;
+      try{
+        peer = new Peer(PEER_CONFIG);
+      }catch(err){
+        this.online = false;
+        finish();
+        return;
+      }
+      this.peer = peer;
+
+      peer.on('open', () => {
+        const conn = peer.connect(hostId, { reliable: true });
+        let opened = false;
+
+        conn.on('open', () => {
+          opened = true;
+          this.connections.set(conn.peer, conn);
+          this.online = true;
+          this._writeSaved(JOINED_ROOM_KEY, { dateStamp: this.dateStamp, code });
+          conn.send({ type: 'request-sync' });
+          finish();
+        });
+
+        conn.on('data', (payload) => {
+          if (!payload || typeof payload !== 'object') return;
+          if (payload.type === 'full-sync'){
+            this._mergeFullDoc(payload.doc || {});
+          } else if (payload.type === 'set'){
+            this.doc[payload.key] = payload.value;
+            this.local._notify(payload.key, payload.value);
+            try{ localStorage.setItem(this.local._storageKey(payload.key), JSON.stringify(payload.value)); }catch(_){}
+          }
+        });
+
+        conn.on('close', () => {
+          this.connections.delete(conn.peer);
+          this.online = false;
+        });
+
+        conn.on('error', () => {
+          this.connections.delete(conn.peer);
+          this.online = false;
+          finish();
+        });
+      });
+
+      peer.on('error', (err) => {
+        // 'peer-unavailable' = host (Owner) isn't online right now; the app
+        // simply reads as offline/last-known-state until the Owner opens.
+        this.online = false;
+        finish();
+      });
+
+      setTimeout(finish, READY_TIMEOUT_MS - 200);
+    });
   }
 
-  _roomKeyFor(role){ return role === 'owner' ? OWNER_ROOM_KEY : JOINED_ROOM_KEY; }
-
-  _readSaved(storageKey){
-    try{ return JSON.parse(localStorage.getItem(storageKey) || 'null'); }catch(_){ return null; }
+  _mergeFullDoc(incomingDoc){
+    Object.keys(incomingDoc).forEach((key) => {
+      const incoming = JSON.stringify(incomingDoc[key]);
+      const current = JSON.stringify(this.doc[key]);
+      if (incoming !== current){
+        this.doc[key] = incomingDoc[key];
+        this.local._notify(key, incomingDoc[key]);
+        try{ localStorage.setItem(this.local._storageKey(key), incoming); }catch(_){}
+      }
+    });
   }
-  _writeSaved(storageKey, value){
-    try{ localStorage.setItem(storageKey, JSON.stringify(value)); }catch(_){}
+
+  _safeSend(conn, payload){
+    try{ if (conn && conn.open) conn.send(payload); }catch(_){ /* connection mid-teardown */ }
+  }
+
+  _teardownPeer(){
+    if (this._heartbeatHandle){ clearInterval(this._heartbeatHandle); this._heartbeatHandle = null; }
+    this.connections.forEach((c) => { try{ c.close(); }catch(_){} });
+    this.connections.clear();
+    if (this.peer){
+      try{ this.peer.destroy(); }catch(_){}
+      this.peer = null;
+    }
+    this.online = false;
+  }
+
+  // Realtime self-healing loop: every second, the Host re-pushes its
+  // current doc to every connected guest, and each Guest pings the host
+  // for a fresh copy - on top of (not instead of) the instant push/relay
+  // above, so brief hiccups (backgrounded tab, Wi-Fi handoff, a peer that
+  // reconnected with a fresh id) never leave a device silently stale.
+  _startHeartbeat(){
+    if (this._heartbeatHandle) clearInterval(this._heartbeatHandle);
+    this._heartbeatHandle = setInterval(() => {
+      if (this.role === 'owner' || (this.peer && this.peer.id && this.peer.id.startsWith(PEER_ID_PREFIX))){
+        this.connections.forEach((c) => this._safeSend(c, { type: 'full-sync', doc: this.doc }));
+      } else {
+        this.connections.forEach((c) => this._safeSend(c, { type: 'heartbeat' }));
+      }
+    }, HEARTBEAT_MS);
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') this._reconnectIfNeeded();
+    });
+    window.addEventListener('online', () => this._reconnectIfNeeded());
+  }
+
+  async _reconnectIfNeeded(){
+    if (this.connections.size > 0 && this.peer && !this.peer.destroyed) return;
+    if (this.role === 'owner' && !this._explicitCode){
+      await this._connectAsHost();
+    } else {
+      await this._connectAsCustomer(this._explicitCode || this.roomCode || dailyRoomCode());
+    }
   }
 
   async _checkDateRotation(){
     const fresh = todayDateStamp();
     if (fresh === this.dateStamp) return;
     this.dateStamp = fresh;
-    this.remoteDoc = {};
-    if (this.role === 'owner'){
-      this.roomCode = this.dateStamp;
-      const seed = await this._buildSeedFromLocal();
-      const existed = await this._pullRemote();
-      if (!existed){
-        await this._pushRemoteData(seed);
-        this.remoteDoc = seed;
-      }
-      this.online = true;
-      this._writeSaved(OWNER_ROOM_KEY, { dateStamp: this.dateStamp, code: this.roomCode });
-    } else {
-      // Same deterministic derivation as _doStart: a Customer always
-      // tries today's fresh date code automatically at midnight rollover.
-      this.roomCode = this.dateStamp;
-      const ok = await this._pullRemote();
-      this.online = ok;
-      if (ok) this._writeSaved(JOINED_ROOM_KEY, { dateStamp: this.dateStamp, code: this.roomCode });
+    this.doc = {};
+    if (this.role === 'owner' && !this._explicitCode){
+      await this._connectAsHost();
+    } else if (!this._explicitCode){
+      await this._connectAsCustomer(dailyRoomCode());
     }
   }
 
@@ -1905,88 +2175,53 @@ class CloudAdapter {
     return seed;
   }
 
-  async _pullRemote(){
-    if (!this.roomCode) return false;
-    try{
-      const res = await fetch(this._kvUrl(this.roomCode), { cache: 'no-store' });
-      if (res.status === 404){ this.online = (this.role === 'owner'); return false; }
-      if (!res.ok){ this.online = false; return false; }
-      const text = await res.text();
-      let data = {};
-      try{ data = text ? JSON.parse(text) : {}; }catch(_){ data = {}; }
-      this.online = true;
-      this._mergeRemote(data || {});
-      return true;
-    }catch(err){
-      this.online = false;
-      return false;
-    }
+  _readSaved(storageKey){
+    try{ return JSON.parse(localStorage.getItem(storageKey) || 'null'); }catch(_){ return null; }
+  }
+  _writeSaved(storageKey, value){
+    try{ localStorage.setItem(storageKey, JSON.stringify(value)); }catch(_){}
   }
 
-  _mergeRemote(data){
-    Object.keys(data).forEach((key) => {
-      const incoming = JSON.stringify(data[key]);
-      const current = JSON.stringify(this.remoteDoc[key]);
-      if (incoming !== current){
-        this.remoteDoc[key] = data[key];
-        this.local._notify(key, data[key]);
-        // Keep local mirror fresh too, so a reload while offline still
-        // shows the latest data this device has already seen.
-        try{ localStorage.setItem(this.local._storageKey(key), incoming); }catch(_){}
-      }
-    });
-  }
-
-  async _pushRemoteData(doc){
-    if (!this.roomCode) return;
-    try{
-      const res = await fetch(this._kvUrl(this.roomCode), {
-        method: 'PUT',
-        headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify(doc)
-      });
-      this.online = res.ok;
-    }catch(err){
-      this.online = false;
-    }
-  }
-
-  async _pushRemote(){ return this._pushRemoteData(this.remoteDoc); }
-
-  _startPolling(){
-    if (this._pollHandle) clearInterval(this._pollHandle);
-    this._pollHandle = setInterval(() => { this._pullRemote(); }, CLOUD_POLL_MS);
-    document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'visible') this._pullRemote();
-    });
-    window.addEventListener('online', () => this._pullRemote());
+  // Explicit join, e.g. a customer typing a code into the "Connect" field
+  // or scanning the Owner's QR code.
+  async joinWithCode(code){
+    if (!isValidSyncCode(code)) return false;
+    this._explicitCode = normalizeSyncCode(code);
+    await this._connectAsCustomer(this._explicitCode);
+    return this.online;
   }
 
   // Manual "sync now" - used by the refresh buttons in both the Customer
   // and Owner headers. Re-checks the date rotation first (so a room that
   // rolled over past midnight while the tab was idle picks up today's new
-  // code immediately) then does an immediate remote pull.
+  // code immediately) then forces a fresh handshake.
   async forceRefresh(){
     await this._checkDateRotation();
-    if (!this.roomCode){
-      return this.online;
-    }
-    return this._pullRemote();
+    await this._reconnectIfNeeded();
+    return this.online;
   }
 
   async get(key, fallback = null){
     await this.ready;
-    if (Object.prototype.hasOwnProperty.call(this.remoteDoc, key) && this.remoteDoc[key] !== undefined){
-      return this.remoteDoc[key] === null ? fallback : this.remoteDoc[key];
+    if (Object.prototype.hasOwnProperty.call(this.doc, key) && this.doc[key] !== undefined){
+      return this.doc[key] === null ? fallback : this.doc[key];
     }
     return this.local.get(key, fallback);
   }
 
   async set(key, value){
     await this.ready;
-    this.remoteDoc[key] = value;
+    this.doc[key] = value;
     await this.local.set(key, value); // instant same-device echo + offline mirror
-    this._pushRemote(); // fire-and-forget push to the shared room
+
+    if (this.role === 'owner' || (this.peer && this.peer.id && this.peer.id.startsWith(PEER_ID_PREFIX))){
+      // We ARE the host: fan this change out to every connected guest now.
+      this.connections.forEach((c) => this._safeSend(c, { type: 'set', key, value }));
+    } else {
+      // We're a guest: send the change to the host, which will relay it
+      // on to every other connected guest.
+      this.connections.forEach((c) => this._safeSend(c, { type: 'set', key, value }));
+    }
     return value;
   }
 
@@ -2008,13 +2243,11 @@ class CloudAdapter {
 
   subscribe(key, fn){ return this.local.subscribe(key, fn); }
   subscribeAll(fn){ return this.local.subscribeAll(fn); }
-
-  isOnline(){ return this.online; }
 }
 
 const OWNER_ROOM_KEY = 'petpuja_owner_room';
 const JOINED_ROOM_KEY = 'petpuja_joined_room';
-const PetPujaSync = new CloudAdapter(SYNC_NAMESPACE);
+const PetPujaSync = new P2PAdapter(SYNC_NAMESPACE);
 
 /* ============================================================
    Presence - track connected customer sessions (per day)
@@ -2035,12 +2268,13 @@ async function getActiveCustomerCount(){
 }
 
 function getDailySyncCode(){
-  return PetPujaSync.getSyncCode() || todayDateStamp();
+  return PetPujaSync.getSyncCode() || dailyRoomCode();
 }
 window.getDailySyncCode = getDailySyncCode;
 window.PetPujaSync = PetPujaSync;
 window.registerPresence = registerPresence;
 window.getActiveCustomerCount = getActiveCustomerCount;
+
 
 </script>
 <script>
@@ -3989,24 +4223,22 @@ const App = {
     initRippleDelegation();
 
     // Determine this device's starting role and whether a sync code was
-    // supplied via URL (QR scan / shared link), THEN start the sync
-    // engine before touching any data - this is the one call that was
-    // previously missing, which is what caused the app to hang forever
-    // on the splash/boot screen (every PetPujaSync.get/set was waiting
-    // on a "ready" promise that nothing ever resolved).
+    // supplied via URL (QR scan / shared link). The P2P handshake is
+    // kicked off here but NOT awaited before painting the app - it runs
+    // fully in the background so the splash screen never sits and waits
+    // on a network/WebRTC negotiation. `ensureSeeded()` and everything the
+    // UI needs reads through PetPujaSync.get(), which already awaits its
+    // own short internal `ready` promise, so data still arrives correctly
+    // the moment it's available - the app just doesn't block its first
+    // paint on it.
     const params = new URLSearchParams(location.search);
     const urlCode = params.get('code');
     const wasOwner = localStorage.getItem('petpuja_owner_authed') === '1';
     PetPujaSync.setRole(wasOwner ? 'owner' : 'customer');
 
-    try{
-      await PetPujaSync.start(urlCode);
-    }catch(err){
-      // start() already has its own internal timeout, but this belt-
-      // and-braces catch guarantees init() itself can never throw and
-      // strand the app on the splash screen.
+    const syncStartPromise = PetPujaSync.start(urlCode).catch((err) => {
       console.info('Pet Puja: sync start failed, continuing offline.', err && err.message);
-    }
+    });
 
     await ensureSeeded();
 
@@ -4027,6 +4259,20 @@ const App = {
 
     this.runSplashSequence();
     this.checkDeepLinkParams();
+
+    // Once the P2P handshake resolves (host claimed / guest matched), give
+    // every already-visible screen one immediate refresh so real data
+    // replaces seed/placeholder data the instant the connection is live,
+    // without the user needing to wait for the next 1s heartbeat tick.
+    syncStartPromise.then(() => {
+      Customer.renderShopStatus();
+      Customer.renderMenu();
+      Customer.updateProfileConnStatus();
+      if (this.screenStack[this.screenStack.length - 1] === 'owner-screen'){
+        Owner.renderDashboard();
+      }
+      Owner.updateTopbarConnStatus();
+    });
   },
 
   runSplashSequence(){
@@ -4039,7 +4285,7 @@ const App = {
       } else {
         this.showScreen('welcome-screen');
       }
-    }, 1400);
+    }, 500);
   },
 
   checkDeepLinkParams(){
@@ -4179,12 +4425,19 @@ const App = {
       });
     }
     const connectBtn = document.getElementById('btn-connect-code');
+    const codeInput = document.getElementById('manual-sync-code');
+    if (codeInput){
+      codeInput.addEventListener('input', () => {
+        const cleaned = codeInput.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 5);
+        if (cleaned !== codeInput.value) codeInput.value = cleaned;
+      });
+    }
     if (connectBtn){
       connectBtn.addEventListener('click', async () => {
         const input = document.getElementById('manual-sync-code');
-        const code = input.value.trim();
+        const code = input.value.trim().toUpperCase();
         if (!isValidSyncCode(code)){
-          showToast('Enter the 8-digit numeric code exactly', 'error');
+          showToast('Enter the 5-character code exactly', 'error');
           return;
         }
         connectBtn.disabled = true;
@@ -4238,10 +4491,10 @@ const App = {
   },
 
   goToOwnerDashboard(){
-    // Switch the sync engine into Owner mode (creates/owns today's
-    // numeric room code) if it isn't already, so logging in as Owner on
-    // a device that booted as a plain Customer immediately starts
-    // broadcasting today's shared room.
+    // Switch the sync engine into Owner mode (claims today's 5-character
+    // host id) if it isn't already, so logging in as Owner on a device
+    // that booted as a plain Customer immediately starts broadcasting
+    // today's shared room to every connected/joining Customer device.
     if (PetPujaSync.role !== 'owner'){
       PetPujaSync.setRole('owner');
       PetPujaSync.start().catch(() => {});
