@@ -23,14 +23,6 @@
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700;9..144,900&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
 
-<!-- PeerJS: free, keyless, hosted WebRTC signalling broker. Used ONLY to
-     hand two devices each other's connection info; once matched, all
-     shop data (menu, orders, feedback...) flows peer-to-peer directly
-     between the Owner's phone and each Customer's device, never through
-     a third-party database. Loaded eagerly, in parallel with everything
-     else, so it's ready the instant App.init() wants to open a connection. -->
-<script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
-
 <style>
 /* ============================================================
    PET PUJA - Design System
@@ -859,15 +851,6 @@ select option{ background: var(--surface); color: var(--text); }
 .toggle-switch.on{ background: var(--success); }
 .toggle-switch.on::after{ transform: translateX(22px); }
 
-.sync-code-box{
-  display:flex; align-items:center; gap:14px; padding:16px; border-radius: var(--radius-lg);
-  background: linear-gradient(135deg, var(--brick), var(--brick-deep)); color:#fff;
-}
-.sync-code-box .code{
-  font-family: var(--font-display); font-size: 26px; font-weight:900; letter-spacing:.12em;
-  background: rgba(255,255,255,.12); padding:8px 14px; border-radius:12px;
-}
-
 .form-grid{ display:grid; grid-template-columns:1fr 1fr; gap:14px; }
 @media (max-width:520px){ .form-grid{ grid-template-columns:1fr; } }
 
@@ -944,34 +927,6 @@ select option{ background: var(--surface); color: var(--text); }
 @keyframes toastOut{ to{ opacity:0; transform: translateY(-10px); } }
 
 /* ============================================================
-   QR page
-   ============================================================ */
-.qr-card{
-  position: relative;
-  display:flex; flex-direction:column; align-items:center; padding: 36px 28px; border-radius: var(--radius-lg);
-  background:
-    linear-gradient(160deg, var(--surface) 0%, var(--bg-sunk) 100%) padding-box,
-    linear-gradient(120deg, var(--yellow), var(--brick-bright) 50%, var(--yellow)) border-box;
-  border: 2px solid transparent;
-  margin: 20px 16px;
-  box-shadow: 0 18px 40px -20px rgba(var(--shadow-color), 0.35);
-}
-.qr-card-badge{
-  display:flex; align-items:center; justify-content:center;
-  width:44px; height:44px; border-radius:50%; overflow:hidden;
-  background: var(--white); border: 2px solid var(--accent-2); margin-bottom:14px;
-  box-shadow: 0 6px 14px -6px rgba(var(--shadow-color),0.45);
-}
-.qr-card-badge img{ width:100%; height:100%; object-fit:cover; }
-.qr-frame{
-  position: relative;
-  padding: 20px; background:#FFFDF8; border-radius: var(--radius-md);
-  border: 3px solid var(--yellow);
-  box-shadow: 0 0 0 1px var(--brick-bright) inset, 0 10px 24px -12px rgba(var(--shadow-color), 0.5);
-}
-.qr-frame canvas, .qr-frame svg{ display:block; border-radius: 4px; }
-
-/* ============================================================
    Star rating input
    ============================================================ */
 .rating-input{ display:flex; gap:8px; justify-content:center; font-size: 30px; color: var(--border); margin: 14px 0; }
@@ -986,15 +941,6 @@ select option{ background: var(--surface); color: var(--text); }
   background-size: 400% 100%; animation: skeletonWave 1.4s ease infinite; border-radius: var(--radius-md);
 }
 @keyframes skeletonWave{ 0%{background-position:100% 50%;} 100%{background-position:0 50%;} }
-
-/* ============================================================
-   Connection status widget
-   ============================================================ */
-.conn-status{
-  display:flex; align-items:center; gap:8px; font-size:12.5px; font-weight:700; color: var(--success);
-}
-.conn-status .dot{ width:8px; height:8px; border-radius:50%; background: currentColor; animation: pulseDot 1.6s infinite; }
-.conn-status.offline{ color: var(--danger); }
 
 /* ============================================================
    Install banner
@@ -1290,7 +1236,6 @@ select option{ background: var(--surface); color: var(--text); }
       <div class="header-title">Pet Puja</div>
       <div id="customer-shop-status" class="shop-status-pill open"><span class="pulse-dot"></span>Open</div>
     </div>
-    <button class="icon-btn" id="btn-customer-refresh" aria-label="Refresh sync"><i class="fa-solid fa-arrows-rotate"></i></button>
     <button class="icon-btn theme-toggle-btn" id="btn-theme-customer" aria-label="Toggle dark mode"><i class="fa-solid fa-moon"></i></button>
     <button class="icon-btn" id="btn-customer-notifications" aria-label="Notifications"><i class="fa-solid fa-bell"></i><span id="notif-dot" class="dot hidden"></span></button>
   </header>
@@ -1353,7 +1298,6 @@ select option{ background: var(--surface); color: var(--text); }
           <div class="header-logo" style="width:52px;height:52px;"><img src="https://i.ibb.co/6RMz7sVG/Untitled475-20260712005436.png" alt="" onerror="this.style.display='none'"></div>
           <div>
             <div style="font-weight:700; font-family:var(--font-display); font-size:16px;">Guest Customer</div>
-            <div class="conn-status" id="profile-conn-status"><span class="dot"></span>Connected to live menu</div>
           </div>
         </div>
       </div>
@@ -1362,12 +1306,6 @@ select option{ background: var(--surface); color: var(--text); }
           <span>Dark mode</span>
           <button class="toggle-switch" id="toggle-dark-profile"></button>
         </div>
-      </div>
-      <div class="card card-pad" style="margin-top:14px;" id="customer-sync-card">
-        <button class="spread" id="btn-open-sync-code" style="width:100%; background:none; border:none; padding:6px 0; color:var(--text);">
-          <span class="row gap-sm"><i class="fa-solid fa-tower-broadcast" style="color:var(--accent);"></i> Sync Code</span>
-          <i class="fa-solid fa-chevron-right" style="color:var(--text-muted); font-size:12px;"></i>
-        </button>
       </div>
       <div class="card card-pad" style="margin-top:14px;" id="customer-install-card">
         <button class="spread" id="btn-install-profile" style="width:100%; background:none; border:none; padding:6px 0; color:var(--text);">
@@ -1382,7 +1320,7 @@ select option{ background: var(--surface); color: var(--text); }
         </button>
       </div>
       <div class="card card-pad text-center" style="margin-top:14px;">
-        <p class="text-muted" style="font-size:12px;">Pet Puja - Tea Time | Indian Chai · v1.0.0</p>
+        <p class="text-muted" style="font-size:12px;">Pet Puja - Tea Time | Indian Chai · Beta v0.1.0</p>
         <p class="text-muted" style="font-size:11px; margin-top:4px;">Made with ❤️ by Ronakks Development</p>
       </div>
     </div>
@@ -1415,7 +1353,6 @@ select option{ background: var(--surface); color: var(--text); }
       <button class="drawer-link" data-page="orders"><i class="fa-solid fa-receipt"></i>Live Orders<span class="nav-badge hidden" id="owner-orders-badge" style="position:static; margin-left:auto;"></span></button>
       <button class="drawer-link" data-page="feedback"><i class="fa-solid fa-star"></i>Customer Feedback</button>
       <button class="drawer-link" data-page="notifications"><i class="fa-solid fa-bullhorn"></i>Notifications</button>
-      <button class="drawer-link" data-page="qr"><i class="fa-solid fa-qrcode"></i>QR Code</button>
       <button class="drawer-link" data-page="analytics"><i class="fa-solid fa-chart-line"></i>Analytics</button>
       <button class="drawer-link" data-page="settings"><i class="fa-solid fa-gear"></i>Settings</button>
       <div style="flex:1"></div>
@@ -1429,8 +1366,6 @@ select option{ background: var(--surface); color: var(--text); }
         <div style="flex:1;">
           <div style="font-family:var(--font-display); font-weight:800; font-size:16px;" id="owner-page-title">Home Dashboard</div>
         </div>
-        <div class="conn-status" id="owner-conn-status"><span class="dot"></span>Live</div>
-        <button class="icon-btn" id="btn-owner-refresh" aria-label="Refresh sync"><i class="fa-solid fa-arrows-rotate"></i></button>
         <button class="icon-btn theme-toggle-btn" id="btn-theme-owner" aria-label="Toggle dark mode"><i class="fa-solid fa-moon"></i></button>
       </div>
       <div class="owner-content" id="owner-content">
@@ -1572,7 +1507,7 @@ select option{ background: var(--surface); color: var(--text); }
       <h3 style="font-family:var(--font-display); font-size:21px;">Pet Puja</h3>
       <p class="text-muted" style="font-size:13px; margin-top:2px;">Tea Time | Indian Chai</p>
       <div style="margin:18px 0; padding:14px; border-radius:var(--radius-md); background:var(--bg-sunk); text-align:left;">
-        <div class="spread" style="font-size:13px; padding:4px 0;"><span class="text-muted">Version</span><strong>1.0.0</strong></div>
+        <div class="spread" style="font-size:13px; padding:4px 0;"><span class="text-muted">Version</span><strong>Beta v0.1.0</strong></div>
         <div class="spread" style="font-size:13px; padding:4px 0;"><span class="text-muted">Developed by</span><strong>Ronakks Development</strong></div>
       </div>
       <p class="text-muted" style="font-size:12.5px; line-height:1.6;">Fresh Indian chai, brewed the traditional way. Order live, track your cup, and enjoy Tea Time, anytime.</p>
@@ -1582,88 +1517,21 @@ select option{ background: var(--surface); color: var(--text); }
   </div>
 </div>
 
-<!-- Sync Code sheet -->
-<div class="overlay" id="overlay-sync-code">
-  <div class="sheet" style="max-width:420px;">
-    <div class="sheet-handle"></div>
-    <div class="sheet-header"><h3>Sync Code</h3><button class="icon-btn" aria-label="Close" onclick="closeSheet('overlay-sync-code')"><i class="fa-solid fa-xmark"></i></button></div>
-    <p class="text-muted" style="font-size:13px; margin:0 0 14px;">You're automatically connected to today's live shop code over a direct device-to-device link. Only enter a different code if the owner asks you to.</p>
-    <div class="sync-code-box">
-      <i class="fa-solid fa-tower-broadcast" style="font-size:22px;"></i>
-      <div>
-        <div style="font-size:11px; opacity:.8; text-transform:uppercase; letter-spacing:.06em; font-weight:700;">Connected code</div>
-        <div class="code" id="customer-sync-code-display">-----</div>
-      </div>
-      <div style="margin-left:auto; text-align:right;">
-        <div class="conn-status" id="customer-sync-conn-status"><span class="dot"></span>Live</div>
-      </div>
-    </div>
-    <div class="field" style="margin-top:16px;">
-      <label for="manual-sync-code">Enter a 5-character code</label>
-      <div class="input-wrap">
-        <i class="fa-solid fa-keyboard"></i>
-        <input type="text" id="manual-sync-code" inputmode="text" autocapitalize="characters" autocomplete="off" spellcheck="false" maxlength="5" placeholder="3F9K2" style="text-transform:uppercase; letter-spacing:.08em;">
-      </div>
-    </div>
-    <button class="btn btn-primary btn-block" style="margin-top:12px;" id="btn-connect-code"><i class="fa-solid fa-plug"></i> Connect</button>
-  </div>
-</div>
-
 </div>
 <script>
 /* ============================================================
-   PET PUJA - Sync Engine
+   PET PUJA - Data Store
    ------------------------------------------------------------
-   A tiny pub/sub "real-time database" abstraction. Every screen
-   in this app talks only to the `PetPujaSync` interface below
-   (get/set/subscribe), never to the transport directly.
-
-   P2P ADAPTER (real cross-device sync, zero backend to run):
-   Shop data (menu, orders, feedback, shop status...) is synced
-   directly device-to-device over WebRTC using PeerJS - the same
-   proven "multi-user connect" trick as SyncNotes: PeerJS's free
-   hosted broker is used ONLY to hand two devices each other's
-   connection info (signalling); once matched, everything after
-   that flows peer-to-peer, straight between the Owner's phone
-   and each Customer's device. No database, no server of ours,
-   nothing to host or pay for.
-
-   One Owner device is the HOST and claims a deterministic Peer
-   ID built from today's 5-character shop code, e.g.
-   "petpuja-shop-3F9K2". Every Customer device is a GUEST with a
-   random Peer ID that simply dials that host id directly -
-   there's no lookup step, no server-assigned room, nothing to
-   type for the common case, because both sides compute the
-   exact same host id from the exact same day code.
-
-   The Owner is the source of truth for the day: on connect, a
-   Customer's device receives the Owner's full current state in
-   one shot, then every change either side makes afterwards is
-   pushed instantly to every open connection AND relayed by the
-   Host to every other connected Customer - the same
-   "hub-and-spoke" relay pattern SyncNotes uses for its live text
-   editor, just carrying the shop's data instead of note text.
-
-   On top of that instant push/relay, a lightweight 1-second
-   heartbeat loop keeps re-confirming state in both directions so
-   the UI is always self-healing and never silently drifts, even
-   across brief WebRTC hiccups (Wi-Fi handoff, backgrounded tab,
-   etc.) - this is in addition to, not instead of, the instant
-   push, so updates normally feel immediate and the loop is just
-   a safety net.
-
-   If no P2P connection is available yet (Owner hasn't opened the
-   app today, or this device is still negotiating), everything
-   falls back to this device's own localStorage, so the app still
-   works standalone - and `ready` resolves instantly (this
-   device's own data is always usable right away), while the
-   actual P2P handshake finishes in the background and is never
-   allowed to block the app's first paint.
+   A tiny pub/sub local data layer. Every screen in this app
+   talks only to the `PetPujaSync` interface below (get/set/
+   push/updateInList/subscribe), never to localStorage directly.
+   Data is persisted in this browser's localStorage and mirrored
+   instantly across open tabs on this device via BroadcastChannel.
    ============================================================ */
 
-const SYNC_NAMESPACE = 'petpuja_v1';
+const STORAGE_NAMESPACE = 'petpuja_v1';
 
-class LocalAdapter {
+class LocalStore {
   constructor(namespace){
     this.ns = namespace;
     this.channel = ('BroadcastChannel' in window) ? new BroadcastChannel(namespace) : null;
@@ -1701,11 +1569,11 @@ class LocalAdapter {
     try{
       localStorage.setItem(this._storageKey(key), JSON.stringify(value));
     }catch(err){
-      console.error('Sync set failed', err);
+      showToast('Storage is full or unavailable', 'error');
     }
     // Notify this tab immediately (storage event doesn't fire in the same tab)
     this._notify(key, value);
-    // Broadcast to other tabs/windows instantly
+    // Broadcast to other tabs/windows on this device instantly
     if (this.channel){
       this.channel.postMessage({ key, value });
     }
@@ -1741,547 +1609,21 @@ class LocalAdapter {
 
   _notify(key, value){
     if (this.listeners[key]){
-      this.listeners[key].forEach(fn => { try{ fn(value); }catch(e){ console.error(e); } });
+      this.listeners[key].forEach(fn => { try{ fn(value); }catch(_){ /* listener error, ignore */ } });
     }
-    this.wildcardListeners.forEach(fn => { try{ fn(key, value); }catch(e){ console.error(e); } });
+    this.wildcardListeners.forEach(fn => { try{ fn(key, value); }catch(_){ /* listener error, ignore */ } });
   }
 }
 
-/* ============================================================
-   Sync Code
-   ------------------------------------------------------------
-   The code is a 5-character MIX OF DIGITS AND UPPERCASE LETTERS
-   (e.g. "3F9K2"), freshly and deterministically derived from
-   today's calendar date. It rotates automatically every 24 hours
-   - a brand new day always means a brand new code - but for any
-   given day it is 100% reproducible: every device that computes
-   "today's code" arrives at the exact same 5 characters with no
-   server round trip, which is what lets a plain "Customer" tap
-   dial straight into the Owner's live room with zero typing.
-   ============================================================ */
-const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no 0/O/1/I - avoids look-alike mixups
-const CODE_LENGTH = 5;
-
-// Small deterministic string hash (djb2) -> stable across devices/sessions,
-// unlike Math.random(), so the SAME date always yields the SAME code.
-function _seedHash(str){
-  let h = 5381;
-  for (let i = 0; i < str.length; i++){
-    h = ((h << 5) + h + str.charCodeAt(i)) >>> 0;
-  }
-  return h >>> 0;
-}
-
-// Deterministic seeded PRNG (mulberry32) seeded from the hash above, so the
-// 5 characters it produces are the same on every device for the same day.
-function _mulberry32(seed){
-  let a = seed;
-  return function(){
-    a |= 0; a = (a + 0x6D2B79F5) | 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
-function todayDateStamp(date = new Date()){
-  const d = String(date.getDate()).padStart(2, '0');
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const y = date.getFullYear();
-  return `${d}${m}${y}`;
-}
-
-// Turns today's date into today's 5-character shop code. Same formula,
-// every device, every time - that's the whole trick.
-function dailyRoomCode(date = new Date()){
-  const seed = _seedHash('petpuja-day-' + todayDateStamp(date));
-  const rnd = _mulberry32(seed);
-  let code = '';
-  for (let i = 0; i < CODE_LENGTH; i++){
-    code += CODE_ALPHABET[Math.floor(rnd() * CODE_ALPHABET.length)];
-  }
-  return code;
-}
-
-function isValidSyncCode(code){
-  return /^[A-Z0-9]{5}$/.test((code || '').trim().toUpperCase());
-}
-
-function normalizeSyncCode(code){
-  return (code || '').trim().toUpperCase();
-}
-
-const READY_TIMEOUT_MS = 3000; // absolute cap on boot time - never let the app hang
-const HEARTBEAT_MS = 1000; // realtime self-healing loop, per-second as requested
-const PEER_ID_PREFIX = 'petpuja-shop-';
-
-// PeerJS's own free public broker, used only for signalling (device
-// discovery/handshake). No shop data ever passes through it - it just
-// introduces two devices to each other so they can open a direct WebRTC
-// channel. Same STUN set SyncNotes uses, for reliable NAT traversal.
-const PEER_CONFIG = {
-  config: {
-    iceServers: [
-      { urls: 'stun:stun.l.google.com:19302' },
-      { urls: 'stun:stun1.l.google.com:19302' },
-      { urls: 'stun:global.stun.twilio.com:3478' }
-    ]
-  },
-  debug: 0
-};
-
-/* ------------------------------------------------------------
-   P2PAdapter - real cross-device sync over direct WebRTC
-   (PeerJS), matching the exact shape every screen already
-   expects (get/set/push/updateInList/subscribe/subscribeAll) -
-   so nothing above this file had to change.
-
-   Wraps a LocalAdapter for instant same-device echo + full
-   offline fallback, and layers a live PeerJS mesh on top:
-   - Owner = host, deterministic id from today's code.
-   - Customer = guest, dials the host id directly.
-   - Host relays every update to all other connected guests.
-   - A 1s heartbeat re-confirms state in both directions.
-------------------------------------------------------------- */
-class P2PAdapter {
-  constructor(namespace){
-    this.local = new LocalAdapter(namespace);
-    this.role = 'owner'; // 'owner' | 'customer' - set via setRole() before use
-    this.dateStamp = todayDateStamp();
-    this.roomCode = null;
-    this.doc = {}; // authoritative local mirror of the shared shop document
-    this.online = false; // true once at least one live P2P connection exists
-    this._readyResolve = null;
-    this._readyDone = false;
-    this.ready = new Promise((resolve) => { this._readyResolve = resolve; });
-    this._connectedResolve = null;
-    this._connectedDone = false;
-    this.connected = new Promise((resolve) => { this._connectedResolve = resolve; });
-
-    this.peer = null;
-    this.connections = new Map(); // peerId -> DataConnection (host: guests; guest: just the host)
-    this._heartbeatHandle = null;
-    this._dateCheckHandle = null;
-    this._explicitCode = null; // set when a Customer manually joins a non-default code
-
-    this._dateCheckHandle = setInterval(() => this._checkDateRotation(), 30 * 1000);
-  }
-
-  _resolveReady(){
-    if (this._readyDone) return;
-    this._readyDone = true;
-    this._readyResolve();
-  }
-
-  _resolveConnected(){
-    if (this._connectedDone) return;
-    this._connectedDone = true;
-    this._connectedResolve();
-  }
-
-  setRole(role){ this.role = role; }
-  getSyncCode(){ return this.roomCode; }
-  isOnline(){ return this.online; }
-
-  _hostIdFor(code){ return PEER_ID_PREFIX + code; }
-
-  // Called once, early, by App init. `explicitCode` is a 5-character code a
-  // Customer typed in or scanned via QR. `ready` resolves on the very next
-  // tick (this device's own localStorage is always immediately usable), so
-  // the UI never waits on the network to paint. The actual WebRTC
-  // handshake runs in the background and resolves `connected` when it
-  // settles (matched, or genuinely gave up) - callers that specifically
-  // want to know "did we get a live P2P link" can await `connected`
-  // instead, guarded by its own hard timeout so a slow/unreachable network
-  // can never hang anything.
-  async start(explicitCode){
-    this._resolveReady();
-    const timeoutGuard = new Promise((resolve) => setTimeout(resolve, READY_TIMEOUT_MS));
-    await Promise.race([this._doStart(explicitCode), timeoutGuard]);
-    this._resolveConnected();
-    this._startHeartbeat();
-  }
-
-  async _doStart(explicitCode){
-    try{
-      if (explicitCode && isValidSyncCode(explicitCode)){
-        this._explicitCode = normalizeSyncCode(explicitCode);
-        await this._connectAsCustomer(this._explicitCode);
-        return;
-      }
-
-      if (this.role === 'owner'){
-        await this._connectAsHost();
-        return;
-      }
-
-      // Customer with no explicit code: the room code is always just
-      // today's derived code (deterministic and public - not a secret),
-      // so a plain "Customer" tap connects automatically with zero
-      // typing, exactly like the Owner side.
-      this.roomCode = dailyRoomCode();
-      await this._connectAsCustomer(this.roomCode);
-    }catch(err){
-      this.online = false;
-      console.info('Pet Puja: P2P sync unavailable, using this device only for now.', err && err.message);
-    }
-  }
-
-  // ======= HOST (Owner) =======
-  async _connectAsHost(){
-    this._teardownPeer();
-    this.roomCode = dailyRoomCode();
-    const hostId = this._hostIdFor(this.roomCode);
-
-    // Seed our authoritative doc from whatever this device already has
-    // locally (e.g. yesterday's leftover state, or a fresh install).
-    this.doc = await this._buildSeedFromLocal();
-
-    // If the PeerJS library itself failed to load (CDN blocked, offline
-    // on first load, etc.), never throw - just stay in local-only mode
-    // and let the heartbeat/reconnect loop keep retrying quietly.
-    if (typeof Peer === 'undefined'){
-      this.online = false;
-      this._writeSaved(OWNER_ROOM_KEY, { dateStamp: this.dateStamp, code: this.roomCode });
-      return;
-    }
-
-    await new Promise((resolve) => {
-      let settled = false;
-      const finish = () => { if (!settled){ settled = true; resolve(); } };
-
-      let peer;
-      try{
-        peer = new Peer(hostId, PEER_CONFIG);
-      }catch(err){
-        this.online = false;
-        finish();
-        return;
-      }
-      this.peer = peer;
-
-      peer.on('open', () => {
-        this.online = true;
-        this._writeSaved(OWNER_ROOM_KEY, { dateStamp: this.dateStamp, code: this.roomCode });
-        finish();
-      });
-
-      peer.on('connection', (conn) => this._acceptGuest(conn));
-
-      peer.on('error', (err) => {
-        // 'unavailable-id' means another tab/device already owns today's
-        // host id (e.g. two Owner devices) - that's fine, this device just
-        // won't be the primary host; it still works fully offline.
-        this.online = false;
-        finish();
-      });
-
-      peer.on('disconnected', () => { this.online = this.connections.size > 0; });
-
-      setTimeout(finish, READY_TIMEOUT_MS - 200);
-    });
-  }
-
-  _acceptGuest(conn){
-    let opened = false;
-    const openIt = () => {
-      if (opened) return;
-      opened = true;
-      this.connections.set(conn.peer, conn);
-      this.online = true;
-      // Send the guest our full current document immediately - this is
-      // the "join = instant full state" handshake.
-      this._safeSend(conn, { type: 'full-sync', doc: this.doc });
-    };
-
-    conn.on('open', openIt);
-
-    conn.on('data', (payload) => {
-      if (!opened) openIt();
-      if (!payload || typeof payload !== 'object') return;
-
-      if (payload.type === 'request-sync'){
-        this._safeSend(conn, { type: 'full-sync', doc: this.doc });
-      } else if (payload.type === 'set'){
-        // A guest wrote a key (e.g. placed an order) - merge it into the
-        // host's authoritative doc, then fan it out to every OTHER guest
-        // instantly, hub-and-spoke, exactly like SyncNotes relays text.
-        this.doc[payload.key] = payload.value;
-        this.local._notify(payload.key, payload.value);
-        try{ localStorage.setItem(this.local._storageKey(payload.key), JSON.stringify(payload.value)); }catch(_){}
-        this.connections.forEach((c, id) => {
-          if (id !== conn.peer) this._safeSend(c, { type: 'set', key: payload.key, value: payload.value });
-        });
-      } else if (payload.type === 'heartbeat'){
-        this._safeSend(conn, { type: 'full-sync', doc: this.doc });
-      }
-    });
-
-    conn.on('close', () => {
-      this.connections.delete(conn.peer);
-      this.online = this.connections.size > 0 || (this.peer && this.peer.open);
-    });
-
-    conn.on('error', () => { this.connections.delete(conn.peer); });
-  }
-
-  // ======= GUEST (Customer) =======
-  async _connectAsCustomer(code){
-    this._teardownPeer();
-    this.roomCode = code;
-    const hostId = this._hostIdFor(code);
-
-    // Same defensive guard as the host path - a blocked/failed PeerJS
-    // load should degrade to local-only, never throw.
-    if (typeof Peer === 'undefined'){
-      this.online = false;
-      return;
-    }
-
-    await new Promise((resolve) => {
-      let settled = false;
-      const finish = () => { if (!settled){ settled = true; resolve(); } };
-
-      let peer;
-      try{
-        peer = new Peer(PEER_CONFIG);
-      }catch(err){
-        this.online = false;
-        finish();
-        return;
-      }
-      this.peer = peer;
-
-      peer.on('open', () => {
-        const conn = peer.connect(hostId, { reliable: true });
-        let opened = false;
-
-        conn.on('open', () => {
-          opened = true;
-          this.connections.set(conn.peer, conn);
-          this.online = true;
-          this._writeSaved(JOINED_ROOM_KEY, { dateStamp: this.dateStamp, code });
-          conn.send({ type: 'request-sync' });
-          finish();
-        });
-
-        conn.on('data', (payload) => {
-          if (!payload || typeof payload !== 'object') return;
-          if (payload.type === 'full-sync'){
-            this._mergeFullDoc(payload.doc || {});
-          } else if (payload.type === 'set'){
-            this.doc[payload.key] = payload.value;
-            this.local._notify(payload.key, payload.value);
-            try{ localStorage.setItem(this.local._storageKey(payload.key), JSON.stringify(payload.value)); }catch(_){}
-          }
-        });
-
-        conn.on('close', () => {
-          this.connections.delete(conn.peer);
-          this.online = false;
-        });
-
-        conn.on('error', () => {
-          this.connections.delete(conn.peer);
-          this.online = false;
-          finish();
-        });
-      });
-
-      peer.on('error', (err) => {
-        // 'peer-unavailable' = host (Owner) isn't online right now; the app
-        // simply reads as offline/last-known-state until the Owner opens.
-        this.online = false;
-        finish();
-      });
-
-      setTimeout(finish, READY_TIMEOUT_MS - 200);
-    });
-  }
-
-  _mergeFullDoc(incomingDoc){
-    Object.keys(incomingDoc).forEach((key) => {
-      const incoming = JSON.stringify(incomingDoc[key]);
-      const current = JSON.stringify(this.doc[key]);
-      if (incoming !== current){
-        this.doc[key] = incomingDoc[key];
-        this.local._notify(key, incomingDoc[key]);
-        try{ localStorage.setItem(this.local._storageKey(key), incoming); }catch(_){}
-      }
-    });
-  }
-
-  _safeSend(conn, payload){
-    try{ if (conn && conn.open) conn.send(payload); }catch(_){ /* connection mid-teardown */ }
-  }
-
-  _teardownPeer(){
-    if (this._heartbeatHandle){ clearInterval(this._heartbeatHandle); this._heartbeatHandle = null; }
-    this.connections.forEach((c) => { try{ c.close(); }catch(_){} });
-    this.connections.clear();
-    if (this.peer){
-      try{ this.peer.destroy(); }catch(_){}
-      this.peer = null;
-    }
-    this.online = false;
-  }
-
-  // Realtime self-healing loop: every second, the Host re-pushes its
-  // current doc to every connected guest, and each Guest pings the host
-  // for a fresh copy - on top of (not instead of) the instant push/relay
-  // above, so brief hiccups (backgrounded tab, Wi-Fi handoff, a peer that
-  // reconnected with a fresh id) never leave a device silently stale.
-  _startHeartbeat(){
-    if (this._heartbeatHandle) clearInterval(this._heartbeatHandle);
-    this._heartbeatHandle = setInterval(() => {
-      if (this.role === 'owner' || (this.peer && this.peer.id && this.peer.id.startsWith(PEER_ID_PREFIX))){
-        this.connections.forEach((c) => this._safeSend(c, { type: 'full-sync', doc: this.doc }));
-      } else {
-        this.connections.forEach((c) => this._safeSend(c, { type: 'heartbeat' }));
-      }
-    }, HEARTBEAT_MS);
-
-    document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'visible') this._reconnectIfNeeded();
-    });
-    window.addEventListener('online', () => this._reconnectIfNeeded());
-  }
-
-  async _reconnectIfNeeded(){
-    if (this.connections.size > 0 && this.peer && !this.peer.destroyed) return;
-    if (this.role === 'owner' && !this._explicitCode){
-      await this._connectAsHost();
-    } else {
-      await this._connectAsCustomer(this._explicitCode || this.roomCode || dailyRoomCode());
-    }
-  }
-
-  async _checkDateRotation(){
-    const fresh = todayDateStamp();
-    if (fresh === this.dateStamp) return;
-    this.dateStamp = fresh;
-    this.doc = {};
-    if (this.role === 'owner' && !this._explicitCode){
-      await this._connectAsHost();
-    } else if (!this._explicitCode){
-      await this._connectAsCustomer(dailyRoomCode());
-    }
-  }
-
-  async _buildSeedFromLocal(){
-    const keys = ['menu','shopStatus','orders','feedback','notifications','settings','presence'];
-    const seed = {};
-    for (const k of keys){ seed[k] = await this.local.get(k, null); }
-    return seed;
-  }
-
-  _readSaved(storageKey){
-    try{ return JSON.parse(localStorage.getItem(storageKey) || 'null'); }catch(_){ return null; }
-  }
-  _writeSaved(storageKey, value){
-    try{ localStorage.setItem(storageKey, JSON.stringify(value)); }catch(_){}
-  }
-
-  // Explicit join, e.g. a customer typing a code into the "Connect" field
-  // or scanning the Owner's QR code.
-  async joinWithCode(code){
-    if (!isValidSyncCode(code)) return false;
-    this._explicitCode = normalizeSyncCode(code);
-    await this._connectAsCustomer(this._explicitCode);
-    return this.online;
-  }
-
-  // Manual "sync now" - used by the refresh buttons in both the Customer
-  // and Owner headers. Re-checks the date rotation first (so a room that
-  // rolled over past midnight while the tab was idle picks up today's new
-  // code immediately) then forces a fresh handshake.
-  async forceRefresh(){
-    await this._checkDateRotation();
-    await this._reconnectIfNeeded();
-    return this.online;
-  }
-
-  async get(key, fallback = null){
-    await this.ready;
-    if (Object.prototype.hasOwnProperty.call(this.doc, key) && this.doc[key] !== undefined){
-      return this.doc[key] === null ? fallback : this.doc[key];
-    }
-    return this.local.get(key, fallback);
-  }
-
-  async set(key, value){
-    await this.ready;
-    this.doc[key] = value;
-    await this.local.set(key, value); // instant same-device echo + offline mirror
-
-    if (this.role === 'owner' || (this.peer && this.peer.id && this.peer.id.startsWith(PEER_ID_PREFIX))){
-      // We ARE the host: fan this change out to every connected guest now.
-      this.connections.forEach((c) => this._safeSend(c, { type: 'set', key, value }));
-    } else {
-      // We're a guest: send the change to the host, which will relay it
-      // on to every other connected guest.
-      this.connections.forEach((c) => this._safeSend(c, { type: 'set', key, value }));
-    }
-    return value;
-  }
-
-  async push(listKey, item){
-    const list = await this.get(listKey, []);
-    list.unshift(item);
-    await this.set(listKey, list);
-    return list;
-  }
-
-  async updateInList(listKey, predicate, updater){
-    const list = await this.get(listKey, []);
-    const idx = list.findIndex(predicate);
-    if (idx === -1) return null;
-    list[idx] = updater(list[idx]);
-    await this.set(listKey, list);
-    return list[idx];
-  }
-
-  subscribe(key, fn){ return this.local.subscribe(key, fn); }
-  subscribeAll(fn){ return this.local.subscribeAll(fn); }
-}
-
-const OWNER_ROOM_KEY = 'petpuja_owner_room';
-const JOINED_ROOM_KEY = 'petpuja_joined_room';
-const PetPujaSync = new P2PAdapter(SYNC_NAMESPACE);
-
-/* ============================================================
-   Presence - track connected customer sessions (per day)
-   ============================================================ */
-const PRESENCE_TTL_MS = 45 * 1000; // considered "online" if pinged in last 45s
-
-async function registerPresence(sessionId){
-  const key = 'presence';
-  const map = await PetPujaSync.get(key, {});
-  map[sessionId] = Date.now();
-  await PetPujaSync.set(key, map);
-}
-
-async function getActiveCustomerCount(){
-  const map = await PetPujaSync.get('presence', {});
-  const now = Date.now();
-  return Object.values(map).filter(ts => now - ts < PRESENCE_TTL_MS).length;
-}
-
-function getDailySyncCode(){
-  return PetPujaSync.getSyncCode() || dailyRoomCode();
-}
-window.getDailySyncCode = getDailySyncCode;
+const PetPujaSync = new LocalStore(STORAGE_NAMESPACE);
 window.PetPujaSync = PetPujaSync;
-window.registerPresence = registerPresence;
-window.getActiveCustomerCount = getActiveCustomerCount;
-
 
 </script>
 <script>
 /* ============================================================
    PET PUJA - Shared Data Store
    Seed data + helper functions used by both Customer and Owner.
-   All reads/writes go through PetPujaSync (see sync-engine.js).
+   All reads/writes go through PetPujaSync.
    ============================================================ */
 
 const LOGO_URL = 'https://i.ibb.co/6RMz7sVG/Untitled475-20260712005436.png';
@@ -2537,434 +1879,6 @@ window.escapeHtml = escapeHtml;
 </script>
 <script>
 /* ============================================================
-   QR Code Generator - compact, correct, dependency-free.
-   Derived from the well-established public-domain "qrcode-generator"
-   algorithm (byte mode, versions 1-10, selectable EC level),
-   including proper BCH(15,5) type-info encoding and mask
-   evaluation, so codes are reliably scannable.
-   Kept local (not CDN) so QR generation still works fully
-   offline once the PWA is installed.
-   ============================================================ */
-(function(global){
-  'use strict';
-
-  const PAD0 = 0xEC, PAD1 = 0x11;
-
-  const QRMode = { MODE_8BIT_BYTE: 4 };
-  const QRErrorCorrectLevel = { L:1, M:0, Q:3, H:2 };
-  const QRMaskPattern = { PATTERN000:0,PATTERN001:1,PATTERN010:2,PATTERN011:3,PATTERN100:4,PATTERN101:5,PATTERN110:6,PATTERN111:7 };
-
-  const QRUtil = {
-    PATTERN_POSITION_TABLE: [
-      [],[6,18],[6,22],[6,26],[6,30],[6,34],[6,22,38],[6,24,42],[6,26,46],[6,28,50],
-      [6,30,54],[6,32,58],[6,34,62],[6,26,46,66],[6,26,48,70],[6,26,50,74],[6,30,54,78],
-      [6,30,56,82],[6,30,58,86],[6,34,62,90],[6,28,50,72,94],[6,26,50,74,98],[6,30,54,78,102],
-      [6,28,54,80,106],[6,32,58,84,110],[6,30,58,86,114],[6,34,62,90,118],[6,26,50,74,98,122],
-      [6,30,54,78,102,126],[6,26,52,78,104,130],[6,30,56,82,108,134],[6,34,60,86,112,138],
-      [6,30,58,86,114,142],[6,34,62,90,118,146],[6,30,54,78,102,126,150],[6,24,50,76,102,128,154],
-      [6,28,54,80,106,132,158],[6,32,58,84,110,136,162],[6,26,54,82,110,138,166],[6,30,58,86,114,142,170]
-    ],
-    G15: (1<<10)|(1<<8)|(1<<5)|(1<<4)|(1<<2)|(1<<1)|(1<<0),
-    G18: (1<<12)|(1<<11)|(1<<10)|(1<<9)|(1<<8)|(1<<5)|(1<<2)|(1<<0),
-    G15_MASK: (1<<14)|(1<<12)|(1<<10)|(1<<4)|(1<<1),
-    getBCHDigit(data){ let digit=0; while(data!==0){ digit++; data >>>=1; } return digit; },
-    getBCHTypeInfo(data){
-      let d = data<<10;
-      while (QRUtil.getBCHDigit(d) - QRUtil.getBCHDigit(QRUtil.G15) >= 0){
-        d ^= (QRUtil.G15 << (QRUtil.getBCHDigit(d) - QRUtil.getBCHDigit(QRUtil.G15)));
-      }
-      return ((data<<10)|d) ^ QRUtil.G15_MASK;
-    },
-    getBCHTypeNumber(data){
-      let d = data<<12;
-      while (QRUtil.getBCHDigit(d) - QRUtil.getBCHDigit(QRUtil.G18) >= 0){
-        d ^= (QRUtil.G18 << (QRUtil.getBCHDigit(d) - QRUtil.getBCHDigit(QRUtil.G18)));
-      }
-      return (data<<12)|d;
-    },
-    getPatternPosition(typeNumber){ return QRUtil.PATTERN_POSITION_TABLE[typeNumber-1]; },
-    getMask(maskPattern, i, j){
-      switch (maskPattern){
-        case QRMaskPattern.PATTERN000: return (i+j)%2===0;
-        case QRMaskPattern.PATTERN001: return i%2===0;
-        case QRMaskPattern.PATTERN010: return j%3===0;
-        case QRMaskPattern.PATTERN011: return (i+j)%3===0;
-        case QRMaskPattern.PATTERN100: return (Math.floor(i/2)+Math.floor(j/3))%2===0;
-        case QRMaskPattern.PATTERN101: return (i*j)%2 + (i*j)%3===0;
-        case QRMaskPattern.PATTERN110: return ((i*j)%2 + (i*j)%3)%2===0;
-        case QRMaskPattern.PATTERN111: return ((i*j)%3 + (i+j)%2)%2===0;
-        default: throw new Error('bad maskPattern:'+maskPattern);
-      }
-    },
-    getErrorCorrectPolynomial(errorCorrectLength){
-      let a = new QRPolynomial([1],0);
-      for (let i=0;i<errorCorrectLength;i++) a = a.multiply(new QRPolynomial([1, QRMath.gexp(i)],0));
-      return a;
-    },
-    getLengthInBits(mode, type){
-      if (type>=1 && type<10){ return mode===QRMode.MODE_8BIT_BYTE ? 8 : 8; }
-      else if (type<27){ return 16; }
-      else { return 16; }
-    },
-    getLostPoint(qrCode){
-      const moduleCount = qrCode.getModuleCount();
-      let lostPoint = 0;
-      for (let row=0; row<moduleCount; row++){
-        for (let col=0; col<moduleCount; col++){
-          let sameCount = 0;
-          const dark = qrCode.isDark(row,col);
-          for (let r=-1;r<=1;r++){
-            if (row+r<0||moduleCount<=row+r) continue;
-            for (let c=-1;c<=1;c++){
-              if (col+c<0||moduleCount<=col+c) continue;
-              if (r===0&&c===0) continue;
-              if (dark===qrCode.isDark(row+r,col+c)) sameCount++;
-            }
-          }
-          if (sameCount>5) lostPoint += (3+sameCount-5);
-        }
-      }
-      for (let row=0; row<moduleCount-1; row++){
-        for (let col=0; col<moduleCount-1; col++){
-          let count=0;
-          if (qrCode.isDark(row,col)) count++;
-          if (qrCode.isDark(row+1,col)) count++;
-          if (qrCode.isDark(row,col+1)) count++;
-          if (qrCode.isDark(row+1,col+1)) count++;
-          if (count===0||count===4) lostPoint+=3;
-        }
-      }
-      for (let row=0; row<moduleCount; row++){
-        for (let col=0; col<moduleCount-6; col++){
-          if (qrCode.isDark(row,col) && !qrCode.isDark(row,col+1) && qrCode.isDark(row,col+2) &&
-              qrCode.isDark(row,col+3) && qrCode.isDark(row,col+4) && !qrCode.isDark(row,col+5) && qrCode.isDark(row,col+6)){
-            lostPoint += 40;
-          }
-        }
-      }
-      for (let col=0; col<moduleCount; col++){
-        for (let row=0; row<moduleCount-6; row++){
-          if (qrCode.isDark(row,col) && !qrCode.isDark(row+1,col) && qrCode.isDark(row+2,col) &&
-              qrCode.isDark(row+3,col) && qrCode.isDark(row+4,col) && !qrCode.isDark(row+5,col) && qrCode.isDark(row+6,col)){
-            lostPoint += 40;
-          }
-        }
-      }
-      let darkCount=0;
-      for (let col=0;col<moduleCount;col++) for (let row=0;row<moduleCount;row++) if (qrCode.isDark(row,col)) darkCount++;
-      const ratio = Math.abs(100*darkCount/moduleCount/moduleCount - 50)/5;
-      lostPoint += ratio*10;
-      return lostPoint;
-    }
-  };
-
-  const QRMath = {
-    glog(n){ if (n<1) throw new Error('glog('+n+')'); return QRMath.LOG_TABLE[n]; },
-    gexp(n){ while(n<0) n+=255; while(n>=256) n-=255; return QRMath.EXP_TABLE[n]; },
-    EXP_TABLE: new Array(256), LOG_TABLE: new Array(256)
-  };
-  for (let i=0;i<8;i++) QRMath.EXP_TABLE[i]=1<<i;
-  for (let i=8;i<256;i++) QRMath.EXP_TABLE[i]=QRMath.EXP_TABLE[i-4]^QRMath.EXP_TABLE[i-5]^QRMath.EXP_TABLE[i-6]^QRMath.EXP_TABLE[i-8];
-  for (let i=0;i<255;i++) QRMath.LOG_TABLE[QRMath.EXP_TABLE[i]]=i;
-
-  function QRPolynomial(num, shift){
-    let offset=0;
-    while (offset<num.length && num[offset]===0) offset++;
-    this.num = new Array(num.length-offset+shift);
-    for (let i=0;i<num.length-offset;i++) this.num[i]=num[i+offset];
-  }
-  QRPolynomial.prototype = {
-    get(index){ return this.num[index]; },
-    getLength(){ return this.num.length; },
-    multiply(e){
-      const num = new Array(this.getLength()+e.getLength()-1).fill(0);
-      for (let i=0;i<this.getLength();i++)
-        for (let j=0;j<e.getLength();j++)
-          num[i+j] ^= QRMath.gexp(QRMath.glog(this.get(i))+QRMath.glog(e.get(j)));
-      return new QRPolynomial(num,0);
-    },
-    mod(e){
-      if (this.getLength()-e.getLength()<0) return this;
-      const ratio = QRMath.glog(this.get(0))-QRMath.glog(e.get(0));
-      const num = this.num.slice();
-      for (let i=0;i<e.getLength();i++) num[i]^=QRMath.gexp(QRMath.glog(e.get(i))+ratio);
-      return new QRPolynomial(num,0).mod(e);
-    }
-  };
-
-  function QRRSBlock(totalCount, dataCount){ this.totalCount=totalCount; this.dataCount=dataCount; }
-  QRRSBlock.RS_BLOCK_TABLE = [
-    // Each row: [ecLevelL, ecLevelM, ecLevelQ, ecLevelH] where each = [blocks, totalCount, dataCount] (simplified: 1 block cases for v1-10, byte mode is enough for our short payloads)
-  ];
-  // Precomputed (blocks=1 for versions used here since our payload is short URLs) totalCount/dataCount per version for EC level M and L:
-  const RSBLOCK_M = {1:[26,16],2:[44,28],3:[70,44],4:[100,64],5:[134,86],6:[172,108],7:[196,124],8:[242,154],9:[292,182],10:[346,216],
-                     11:[404,254],12:[466,290],13:[532,334],14:[581,365],15:[655,415],16:[733,453],17:[815,507],18:[901,563],19:[991,627],20:[1085,669]};
-  const RSBLOCK_L = {1:[26,19],2:[44,34],3:[70,55],4:[100,80],5:[134,108],6:[172,136],7:[196,156],8:[242,194],9:[292,232],10:[346,274],
-                     11:[404,324],12:[466,370],13:[532,428],14:[581,461],15:[655,523],16:[733,589],17:[815,647],18:[901,721],19:[991,795],20:[1085,861]};
-
-  function getRSBlocks(typeNumber, ecLevel){
-    const table = (ecLevel===QRErrorCorrectLevel.L) ? RSBLOCK_L : RSBLOCK_M;
-    const row = table[typeNumber];
-    return [ new QRRSBlock(row[0], row[1]) ];
-  }
-
-  function QR8bitByte(data){
-    this.mode = QRMode.MODE_8BIT_BYTE;
-    this.data = data;
-    this.parsedData = [];
-    for (let i=0, l=this.data.length; i<l; i++){
-      const byteArray = [];
-      const code = this.data.charCodeAt(i);
-      if (code > 0x10000){
-        byteArray[0]=0xF0|((code&0x1C0000)>>>18); byteArray[1]=0x80|((code&0x3F000)>>>12);
-        byteArray[2]=0x80|((code&0xFC0)>>>6); byteArray[3]=0x80|(code&0x3F);
-      } else if (code > 0x800){
-        byteArray[0]=0xE0|((code&0xF000)>>>12); byteArray[1]=0x80|((code&0xFC0)>>>6); byteArray[2]=0x80|(code&0x3F);
-      } else if (code > 0x80){
-        byteArray[0]=0xC0|((code&0x7C0)>>>6); byteArray[1]=0x80|(code&0x3F);
-      } else {
-        byteArray[0]=code;
-      }
-      this.parsedData.push(...byteArray);
-    }
-    this.parsedData.length = this.parsedData.length;
-  }
-  QR8bitByte.prototype = {
-    getLength(){ return this.parsedData.length; },
-    write(buffer){ for (let i=0;i<this.parsedData.length;i++) buffer.put(this.parsedData[i],8); }
-  };
-
-  function QRBitBuffer(){ this.buffer=[]; this.length=0; }
-  QRBitBuffer.prototype = {
-    get(index){ return ((this.buffer[Math.floor(index/8)]>>>(7-index%8))&1)===1; },
-    put(num,length){ for (let i=0;i<length;i++) this.putBit(((num>>>(length-i-1))&1)===1); },
-    getLengthInBits(){ return this.length; },
-    putBit(bit){
-      const bufIndex = Math.floor(this.length/8);
-      if (this.buffer.length<=bufIndex) this.buffer.push(0);
-      if (bit) this.buffer[bufIndex] |= (0x80>>>(this.length%8));
-      this.length++;
-    }
-  };
-
-  function QRCodeModel(typeNumber, errorCorrectLevel){
-    this.typeNumber = typeNumber;
-    this.errorCorrectLevel = errorCorrectLevel;
-    this.modules = null;
-    this.moduleCount = 0;
-    this.dataCache = null;
-    this.dataList = [];
-  }
-  QRCodeModel.prototype = {
-    addData(data){ this.dataList.push(new QR8bitByte(data)); this.dataCache=null; },
-    isDark(row,col){
-      if (row<0||this.moduleCount<=row||col<0||this.moduleCount<=col) throw new Error(row+','+col);
-      return this.modules[row][col];
-    },
-    getModuleCount(){ return this.moduleCount; },
-    make(){ this.makeImpl(false, this.getBestMaskPattern()); },
-    makeImpl(test, maskPattern){
-      this.moduleCount = this.typeNumber*4+17;
-      this.modules = new Array(this.moduleCount);
-      for (let row=0; row<this.moduleCount; row++){
-        this.modules[row] = new Array(this.moduleCount).fill(null);
-      }
-      this.setupPositionProbePattern(0,0);
-      this.setupPositionProbePattern(this.moduleCount-7,0);
-      this.setupPositionProbePattern(0,this.moduleCount-7);
-      this.setupPositionAdjustPattern();
-      this.setupTimingPattern();
-      this.setupTypeInfo(test, maskPattern);
-      if (this.typeNumber>=7) this.setupTypeNumber(test);
-      if (this.dataCache===null) this.dataCache = QRCodeModel.createData(this.typeNumber,this.errorCorrectLevel,this.dataList);
-      this.mapData(this.dataCache, maskPattern);
-    },
-    setupPositionProbePattern(row,col){
-      for (let r=-1;r<=7;r++){
-        if (row+r<=-1||this.moduleCount<=row+r) continue;
-        for (let c=-1;c<=7;c++){
-          if (col+c<=-1||this.moduleCount<=col+c) continue;
-          const cond = (0<=r&&r<=6&&(c===0||c===6)) || (0<=c&&c<=6&&(r===0||r===6)) || (2<=r&&r<=4&&2<=c&&c<=4);
-          this.modules[row+r][col+c] = cond;
-        }
-      }
-    },
-    getBestMaskPattern(){
-      let minLostPoint=0, pattern=0;
-      for (let i=0;i<8;i++){
-        this.makeImpl(true,i);
-        const lostPoint = QRUtil.getLostPoint(this);
-        if (i===0||minLostPoint>lostPoint){ minLostPoint=lostPoint; pattern=i; }
-      }
-      return pattern;
-    },
-    setupTimingPattern(){
-      for (let r=8;r<this.moduleCount-8;r++){
-        if (this.modules[r][6]!==null) continue;
-        this.modules[r][6] = (r%2===0);
-      }
-      for (let c=8;c<this.moduleCount-8;c++){
-        if (this.modules[6][c]!==null) continue;
-        this.modules[6][c] = (c%2===0);
-      }
-    },
-    setupPositionAdjustPattern(){
-      const pos = QRUtil.getPatternPosition(this.typeNumber);
-      for (let i=0;i<pos.length;i++){
-        for (let j=0;j<pos.length;j++){
-          const row=pos[i], col=pos[j];
-          if (this.modules[row][col]!==null) continue;
-          for (let r=-2;r<=2;r++){
-            for (let c=-2;c<=2;c++){
-              this.modules[row+r][col+c] = (r===-2||r===2||c===-2||c===2||(r===0&&c===0));
-            }
-          }
-        }
-      }
-    },
-    setupTypeNumber(test){
-      const bits = QRUtil.getBCHTypeNumber(this.typeNumber);
-      for (let i=0;i<18;i++){
-        const mod = (!test && ((bits>>i)&1)===1);
-        this.modules[Math.floor(i/3)][i%3+this.moduleCount-8-3] = mod;
-      }
-      for (let i=0;i<18;i++){
-        const mod = (!test && ((bits>>i)&1)===1);
-        this.modules[i%3+this.moduleCount-8-3][Math.floor(i/3)] = mod;
-      }
-    },
-    setupTypeInfo(test, maskPattern){
-      const data = (this.errorCorrectLevel<<3)|maskPattern;
-      const bits = QRUtil.getBCHTypeInfo(data);
-      for (let i=0;i<15;i++){
-        const mod = (!test && ((bits>>i)&1)===1);
-        if (i<6) this.modules[i][8]=mod;
-        else if (i<8) this.modules[i+1][8]=mod;
-        else this.modules[this.moduleCount-15+i][8]=mod;
-      }
-      for (let i=0;i<15;i++){
-        const mod = (!test && ((bits>>i)&1)===1);
-        if (i<8) this.modules[8][this.moduleCount-i-1]=mod;
-        else if (i<9) this.modules[8][15-i-1+1]=mod;
-        else this.modules[8][15-i-1]=mod;
-      }
-      this.modules[this.moduleCount-8][8] = (!test);
-    },
-    mapData(data, maskPattern){
-      let inc=-1, row=this.moduleCount-1, bitIndex=7, byteIndex=0;
-      for (let col=this.moduleCount-1; col>0; col-=2){
-        if (col===6) col--;
-        while (true){
-          for (let c=0;c<2;c++){
-            if (this.modules[row][col-c]===null){
-              let dark=false;
-              if (byteIndex<data.length) dark = ((data[byteIndex]>>>bitIndex)&1)===1;
-              const mask = QRUtil.getMask(maskPattern,row,col-c);
-              if (mask) dark=!dark;
-              this.modules[row][col-c]=dark;
-              bitIndex--;
-              if (bitIndex===-1){ byteIndex++; bitIndex=7; }
-            }
-          }
-          row+=inc;
-          if (row<0||this.moduleCount<=row){ row-=inc; inc=-inc; break; }
-        }
-      }
-    }
-  };
-  QRCodeModel.PAD0 = PAD0; QRCodeModel.PAD1 = PAD1;
-  QRCodeModel.createData = function(typeNumber, errorCorrectLevel, dataList){
-    const rsBlocks = getRSBlocks(typeNumber, errorCorrectLevel);
-    const buffer = new QRBitBuffer();
-    for (let i=0;i<dataList.length;i++){
-      const data = dataList[i];
-      buffer.put(data.mode,4);
-      buffer.put(data.getLength(), QRUtil.getLengthInBits(data.mode, typeNumber));
-      data.write(buffer);
-    }
-    let totalDataCount=0;
-    for (let i=0;i<rsBlocks.length;i++) totalDataCount += rsBlocks[i].dataCount;
-    if (buffer.getLengthInBits() > totalDataCount*8){
-      throw new Error('code length overflow: '+buffer.getLengthInBits()+' > '+totalDataCount*8);
-    }
-    if (buffer.getLengthInBits()+4 <= totalDataCount*8) buffer.put(0,4);
-    while (buffer.getLengthInBits()%8!==0) buffer.putBit(false);
-    while (true){
-      if (buffer.getLengthInBits()>=totalDataCount*8) break;
-      buffer.put(QRCodeModel.PAD0,8);
-      if (buffer.getLengthInBits()>=totalDataCount*8) break;
-      buffer.put(QRCodeModel.PAD1,8);
-    }
-    return QRCodeModel.createBytes(buffer, rsBlocks);
-  };
-  QRCodeModel.createBytes = function(buffer, rsBlocks){
-    let offset=0, maxDcCount=0, maxEcCount=0;
-    const dcdata = new Array(rsBlocks.length), ecdata = new Array(rsBlocks.length);
-    for (let r=0;r<rsBlocks.length;r++){
-      const dcCount = rsBlocks[r].dataCount, ecCount = rsBlocks[r].totalCount - dcCount;
-      maxDcCount = Math.max(maxDcCount, dcCount); maxEcCount = Math.max(maxEcCount, ecCount);
-      dcdata[r] = new Array(dcCount);
-      for (let i=0;i<dcdata[r].length;i++) dcdata[r][i] = 0xff & buffer.buffer[i+offset];
-      offset += dcCount;
-      const rsPoly = QRUtil.getErrorCorrectPolynomial(ecCount);
-      const rawPoly = new QRPolynomial(dcdata[r], rsPoly.getLength()-1);
-      const modPoly = rawPoly.mod(rsPoly);
-      ecdata[r] = new Array(rsPoly.getLength()-1);
-      for (let i=0;i<ecdata[r].length;i++){
-        const modIndex = i+modPoly.getLength()-ecdata[r].length;
-        ecdata[r][i] = modIndex>=0 ? modPoly.get(modIndex) : 0;
-      }
-    }
-    let totalCodeCount=0;
-    for (let i=0;i<rsBlocks.length;i++) totalCodeCount += rsBlocks[i].totalCount;
-    const data = new Array(totalCodeCount);
-    let index=0;
-    for (let i=0;i<maxDcCount;i++) for (let r=0;r<rsBlocks.length;r++) if (i<dcdata[r].length) data[index++]=dcdata[r][i];
-    for (let i=0;i<maxEcCount;i++) for (let r=0;r<rsBlocks.length;r++) if (i<ecdata[r].length) data[index++]=ecdata[r][i];
-    return data;
-  };
-
-  function chooseTypeNumber(len, ecLevel){
-    const table = (ecLevel===QRErrorCorrectLevel.L) ? RSBLOCK_L : RSBLOCK_M;
-    for (let v=1; v<=20; v++){
-      // usable data bytes minus mode(4bits)+length(8bits)=1.5 bytes overhead approx -> subtract 3 to be safe
-      if (len <= table[v][1]-3) return v;
-    }
-    return 20;
-  }
-
-  function renderToCanvas(canvas, text, opts={}){
-    const size = opts.size || 240;
-    const margin = opts.margin ?? 4;
-    const dark = opts.dark || '#1A1A1A';
-    const light = opts.light || '#FFFFFF';
-    const ecLevel = QRErrorCorrectLevel.M;
-    const typeNumber = chooseTypeNumber(text.length, ecLevel);
-    const qr = new QRCodeModel(typeNumber, ecLevel);
-    qr.addData(text);
-    qr.make();
-    const count = qr.getModuleCount();
-    const cell = Math.max(2, Math.floor(size / (count + margin*2)));
-    const finalSize = cell * (count + margin*2);
-    canvas.width = finalSize; canvas.height = finalSize;
-    const ctx = canvas.getContext('2d');
-    ctx.fillStyle = light;
-    ctx.fillRect(0,0,finalSize,finalSize);
-    ctx.fillStyle = dark;
-    for (let r=0;r<count;r++){
-      for (let c=0;c<count;c++){
-        if (qr.isDark(r,c)) ctx.fillRect((c+margin)*cell,(r+margin)*cell,cell,cell);
-      }
-    }
-    return canvas;
-  }
-
-  global.PetPujaQR = { renderToCanvas, QRCodeModel, QRErrorCorrectLevel };
-})(window);
-
-</script>
-<script>
-/* ============================================================
    PET PUJA - Customer Mode
    ============================================================ */
 
@@ -2990,7 +1904,6 @@ const Customer = {
 
     this.bindEvents();
     this.subscribeLive();
-    this.startPresenceLoop();
   },
 
   bindEvents(){
@@ -3351,13 +2264,7 @@ const Customer = {
 
   async renderShopStatus(){
     const status = await PetPujaSync.get('shopStatus', { open:true });
-    const ownerReachable = typeof PetPujaSync.isOnline === 'function' ? PetPujaSync.isOnline() : true;
-    // The shop only reads as truly "Open" when the owner's device is the
-    // one that created today's room and this customer is actually
-    // connected to it. If the owner device isn't reachable at all (never
-    // opened today, or offline), customers see "Closed" rather than a
-    // stale "Open" pill from yesterday's local cache.
-    const isOpen = !!status.open && ownerReachable;
+    const isOpen = !!status.open;
     const pill = document.getElementById('customer-shop-status');
     pill.className = `shop-status-pill ${isOpen ? 'open':'closed'}`;
     pill.innerHTML = `<span class="pulse-dot"></span>${isOpen ? 'Open' : 'Closed'}`;
@@ -3365,12 +2272,6 @@ const Customer = {
     const bannerSlot = document.getElementById('closed-banner-slot');
     if (isOpen){
       bannerSlot.innerHTML = '';
-    } else if (!ownerReachable){
-      bannerSlot.innerHTML = `
-      <div class="closed-banner">
-        <i class="fa-solid fa-plug-circle-xmark"></i>
-        <div><h4>Shop Closed</h4><p>Owner isn't online right now. Pull to refresh or check back soon!</p></div>
-      </div>`;
     } else {
       bannerSlot.innerHTML = `
       <div class="closed-banner">
@@ -3476,17 +2377,7 @@ const Customer = {
       }
       this._lastNotifCount = notifs?.length || 0;
     });
-    this.updateProfileConnStatus();
     this.renderShopStatus();
-    setInterval(() => { this.updateProfileConnStatus(); this.renderShopStatus(); }, 6000);
-  },
-
-  updateProfileConnStatus(){
-    const el = document.getElementById('profile-conn-status');
-    if (!el) return;
-    const isOnline = typeof PetPujaSync.isOnline === 'function' ? PetPujaSync.isOnline() : true;
-    el.classList.toggle('offline', !isOnline);
-    el.innerHTML = `<span class="dot"></span>${isOnline ? 'Connected to live menu' : 'Offline - showing last saved menu'}`;
   },
 
   _lastOrderStatuses: {},
@@ -3499,11 +2390,6 @@ const Customer = {
       }
       this._lastOrderStatuses[o.id] = o.status;
     });
-  },
-
-  startPresenceLoop(){
-    registerPresence(this.sessionId);
-    setInterval(() => registerPresence(this.sessionId), 20000);
   }
 };
 
@@ -3633,13 +2519,13 @@ const Owner = {
     document.getElementById('owner-shell').classList.remove('drawer-open');
     const titles = {
       dashboard:'Home Dashboard', shopstatus:'Shop Status', menu:'Menu Management', orders:'Live Orders',
-      feedback:'Customer Feedback', notifications:'Notifications', qr:'QR Code', analytics:'Analytics', settings:'Settings'
+      feedback:'Customer Feedback', notifications:'Notifications', analytics:'Analytics', settings:'Settings'
     };
     document.getElementById('owner-page-title').textContent = titles[page] || 'Pet Puja';
     const renderers = {
       dashboard: this.renderDashboard, shopstatus: this.renderShopStatusPage, menu: this.renderMenuPage,
       orders: this.renderOrdersPage, feedback: this.renderFeedbackPage, notifications: this.renderNotificationsPage,
-      qr: this.renderQrPage, analytics: this.renderAnalyticsPage, settings: this.renderSettingsPage
+      analytics: this.renderAnalyticsPage, settings: this.renderSettingsPage
     };
     const content = document.getElementById('owner-content');
     content.scrollTop = 0;
@@ -3660,19 +2546,7 @@ const Owner = {
     });
     PetPujaSync.subscribe('feedback', () => { if (this.currentPage === 'feedback') this.renderFeedbackPage(); if (this.currentPage==='dashboard') this.renderDashboard(); });
     PetPujaSync.subscribe('menu', () => { if (this.currentPage === 'menu') this.renderMenuPage(); });
-    PetPujaSync.subscribe('presence', () => { if (this.currentPage === 'dashboard') this.renderDashboard(); });
     this.updateOrdersBadge();
-    this.updateTopbarConnStatus();
-    setInterval(() => { if (this.currentPage === 'dashboard') this.renderDashboard(); }, 15000);
-    setInterval(() => this.updateTopbarConnStatus(), 6000);
-  },
-
-  updateTopbarConnStatus(){
-    const el = document.getElementById('owner-conn-status');
-    if (!el) return;
-    const isOnline = typeof PetPujaSync.isOnline === 'function' ? PetPujaSync.isOnline() : true;
-    el.classList.toggle('offline', !isOnline);
-    el.innerHTML = `<span class="dot"></span>${isOnline ? 'Live' : 'Offline'}`;
   },
 
   async updateOrdersBadge(){
@@ -3685,40 +2559,24 @@ const Owner = {
 
   /* ------------------------------------------------------------ DASHBOARD */
   async renderDashboard(){
-    const code = getDailySyncCode();
     const status = await PetPujaSync.get('shopStatus', { open:true });
     const orders = await PetPujaSync.get('orders', []);
     const feedback = await PetPujaSync.get('feedback', []);
-    const activeCustomers = await getActiveCustomerCount();
     const pendingOrders = orders.filter(o => o.status === 'Pending').length;
     const todayOrders = orders.filter(o => this.isToday(o.createdAt));
     const todayRevenue = todayOrders.filter(o => o.status !== 'Cancelled').reduce((s,o) => s + o.total, 0);
     const avgRating = feedback.length ? (feedback.reduce((s,f) => s+f.rating,0) / feedback.length).toFixed(1) : 'N/A';
-    const isOnline = typeof PetPujaSync.isOnline === 'function' ? PetPujaSync.isOnline() : true;
 
     document.getElementById('owner-content').innerHTML = `
       <h2 class="section-title">Welcome back 👋</h2>
       <p class="text-muted" style="font-size:13.5px;">Here's what's happening at Pet Puja right now.</p>
 
-      <div class="sync-code-box" style="margin-top:18px;">
-        <i class="fa-solid fa-tower-broadcast" style="font-size:22px;"></i>
-        <div>
-          <div style="font-size:11px; opacity:.8; text-transform:uppercase; letter-spacing:.06em; font-weight:700;">Today's sync code</div>
-          <div class="code">${code}</div>
-        </div>
-        <div style="margin-left:auto; text-align:right;">
-          <div class="conn-status" style="color:${isOnline ? '#B8F2C9' : '#FFD6D6'};"><span class="dot"></span>${isOnline ? 'Live &amp; broadcasting' : 'Offline - this device only'}</div>
-          <div style="font-size:11px; opacity:.75; margin-top:4px;">${isOnline ? 'Customers connect automatically' : 'Reconnecting...'}</div>
-        </div>
-      </div>
-
-      <div class="stat-grid">
+      <div class="stat-grid" style="margin-top:18px;">
         <div class="stat-card stagger-in" style="animation-delay:0ms"><div class="stat-value">${status.open ? '🟢 Open':'🔴 Closed'}</div><div class="stat-label">Shop Status</div></div>
-        <div class="stat-card stagger-in" style="animation-delay:30ms"><div class="stat-value">${activeCustomers}</div><div class="stat-label">Connected Customers</div></div>
-        <div class="stat-card stagger-in" style="animation-delay:60ms"><div class="stat-value">${pendingOrders}</div><div class="stat-label">Pending Orders</div></div>
-        <div class="stat-card stagger-in" style="animation-delay:90ms"><div class="stat-value">${formatCurrency(todayRevenue)}</div><div class="stat-label">Today's Revenue</div></div>
-        <div class="stat-card stagger-in" style="animation-delay:120ms"><div class="stat-value">${todayOrders.length}</div><div class="stat-label">Today's Orders</div></div>
-        <div class="stat-card stagger-in" style="animation-delay:150ms"><div class="stat-value">${avgRating} ★</div><div class="stat-label">Average Rating</div></div>
+        <div class="stat-card stagger-in" style="animation-delay:30ms"><div class="stat-value">${pendingOrders}</div><div class="stat-label">Pending Orders</div></div>
+        <div class="stat-card stagger-in" style="animation-delay:60ms"><div class="stat-value">${formatCurrency(todayRevenue)}</div><div class="stat-label">Today's Revenue</div></div>
+        <div class="stat-card stagger-in" style="animation-delay:90ms"><div class="stat-value">${todayOrders.length}</div><div class="stat-label">Today's Orders</div></div>
+        <div class="stat-card stagger-in" style="animation-delay:120ms"><div class="stat-value">${avgRating} ★</div><div class="stat-label">Average Rating</div></div>
       </div>
 
       <h3 style="font-family:var(--font-display); font-size:16px; margin:20px 0 10px;">Recent Orders</h3>
@@ -4028,30 +2886,6 @@ const Owner = {
     });
   },
 
-  /* ------------------------------------------------------------ QR CODE */
-  async renderQrPage(){
-    const code = getDailySyncCode();
-    const url = `${location.origin}${location.pathname}?mode=customer&code=${code}`;
-    const content = document.getElementById('owner-content');
-    content.innerHTML = `
-      <h2 class="section-title">QR Code</h2>
-      <p class="text-muted" style="font-size:13px; margin:6px 0 0;">Scan opens the Pet Puja menu directly for customers.</p>
-      <div class="qr-card">
-        <div class="qr-card-badge"><img src="${LOGO_URL}" alt="" onerror="this.parentElement.style.display='none'"></div>
-        <div class="qr-frame"><canvas id="qr-canvas"></canvas></div>
-        <p style="font-size:12px; color:var(--text-muted); margin-top:16px; word-break:break-all; text-align:center;">${escapeHtml(url)}</p>
-        <button class="btn btn-accent" style="margin-top:14px;" id="btn-download-qr"><i class="fa-solid fa-download"></i> Download QR</button>
-      </div>`;
-    const canvas = document.getElementById('qr-canvas');
-    PetPujaQR.renderToCanvas(canvas, url, { size: 240, dark: '#5E1D10', light: '#FFFDF8' });
-    document.getElementById('btn-download-qr').addEventListener('click', () => {
-      const link = document.createElement('a');
-      link.download = 'petpuja-qr.png';
-      link.href = canvas.toDataURL('image/png');
-      link.click();
-    });
-  },
-
   /* ------------------------------------------------------------ ANALYTICS */
   async renderAnalyticsPage(){
     const orders = await PetPujaSync.get('orders', []);
@@ -4134,7 +2968,7 @@ const Owner = {
 
       <div class="card card-pad text-center" style="margin-top:14px;">
         <div class="header-logo" style="width:44px;height:44px; margin:0 auto 8px;"><img src="${LOGO_URL}" alt="" onerror="this.style.display='none'"></div>
-        <p class="text-muted" style="font-size:12px;">Pet Puja - Tea Time | Indian Chai · v1.0.0</p>
+        <p class="text-muted" style="font-size:12px;">Pet Puja - Tea Time | Indian Chai · Beta v0.1.0</p>
         <p class="text-muted" style="font-size:11px; margin-top:4px;">Made with ❤️ by Ronakks Development</p>
       </div>`;
 
@@ -4171,7 +3005,7 @@ const Owner = {
     const keys = ['menu', 'shopStatus', 'orders', 'feedback', 'notifications', 'settings'];
     const data = {};
     for (const k of keys){ data[k] = await PetPujaSync.get(k, null); }
-    const backup = { app: 'Pet Puja', version: '1.0.0', exportedAt: Date.now(), data };
+    const backup = { app: 'Pet Puja', version: 'Beta v0.1.0', exportedAt: Date.now(), data };
     const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -4222,24 +3056,6 @@ const App = {
     applyTheme(getTheme());
     initRippleDelegation();
 
-    // Determine this device's starting role and whether a sync code was
-    // supplied via URL (QR scan / shared link). The P2P handshake is
-    // kicked off here but NOT awaited before painting the app - it runs
-    // fully in the background so the splash screen never sits and waits
-    // on a network/WebRTC negotiation. `ensureSeeded()` and everything the
-    // UI needs reads through PetPujaSync.get(), which already awaits its
-    // own short internal `ready` promise, so data still arrives correctly
-    // the moment it's available - the app just doesn't block its first
-    // paint on it.
-    const params = new URLSearchParams(location.search);
-    const urlCode = params.get('code');
-    const wasOwner = localStorage.getItem('petpuja_owner_authed') === '1';
-    PetPujaSync.setRole(wasOwner ? 'owner' : 'customer');
-
-    const syncStartPromise = PetPujaSync.start(urlCode).catch((err) => {
-      console.info('Pet Puja: sync start failed, continuing offline.', err && err.message);
-    });
-
     await ensureSeeded();
 
     this.setupPwa();
@@ -4248,7 +3064,6 @@ const App = {
     this.bindInstallPrompt();
     this.bindGenericSheetClosers();
     this.bindBackButton();
-    this.bindConnectScreen();
 
     Owner.init();
     Owner.bindMenuForm();
@@ -4258,21 +3073,6 @@ const App = {
     this.refreshInstallUI();
 
     this.runSplashSequence();
-    this.checkDeepLinkParams();
-
-    // Once the P2P handshake resolves (host claimed / guest matched), give
-    // every already-visible screen one immediate refresh so real data
-    // replaces seed/placeholder data the instant the connection is live,
-    // without the user needing to wait for the next 1s heartbeat tick.
-    syncStartPromise.then(() => {
-      Customer.renderShopStatus();
-      Customer.renderMenu();
-      Customer.updateProfileConnStatus();
-      if (this.screenStack[this.screenStack.length - 1] === 'owner-screen'){
-        Owner.renderDashboard();
-      }
-      Owner.updateTopbarConnStatus();
-    });
   },
 
   runSplashSequence(){
@@ -4286,19 +3086,6 @@ const App = {
         this.showScreen('welcome-screen');
       }
     }, 500);
-  },
-
-  checkDeepLinkParams(){
-    const params = new URLSearchParams(location.search);
-    if (params.get('mode') === 'customer'){
-      // QR scan / app shortcut lands straight in customer mode
-      setTimeout(() => {
-        this.showScreen('customer-screen', { direction: 'fade', replace: true });
-        if (params.get('view') === 'orders'){
-          Customer.switchView('orders');
-        }
-      }, 1450);
-    }
   },
 
   showScreen(id, opts){
@@ -4416,89 +3203,14 @@ const App = {
     window.addEventListener('popstate', () => this.handlePopState());
   },
 
-  bindConnectScreen(){
-    const openBtn = document.getElementById('btn-open-sync-code');
-    if (openBtn){
-      openBtn.addEventListener('click', () => {
-        this.refreshSyncCodeSheet();
-        openSheet('overlay-sync-code');
-      });
-    }
-    const connectBtn = document.getElementById('btn-connect-code');
-    const codeInput = document.getElementById('manual-sync-code');
-    if (codeInput){
-      codeInput.addEventListener('input', () => {
-        const cleaned = codeInput.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 5);
-        if (cleaned !== codeInput.value) codeInput.value = cleaned;
-      });
-    }
-    if (connectBtn){
-      connectBtn.addEventListener('click', async () => {
-        const input = document.getElementById('manual-sync-code');
-        const code = input.value.trim().toUpperCase();
-        if (!isValidSyncCode(code)){
-          showToast('Enter the 5-character code exactly', 'error');
-          return;
-        }
-        connectBtn.disabled = true;
-        const ok = await PetPujaSync.joinWithCode(code);
-        connectBtn.disabled = false;
-        if (ok){
-          showToast('Connected!', 'success');
-          input.value = '';
-          this.refreshSyncCodeSheet();
-          Customer.renderShopStatus();
-          Customer.renderMenu();
-        } else {
-          showToast('That code isn\'t online right now', 'error');
-        }
-      });
-    }
-  },
-
-  refreshSyncCodeSheet(){
-    const codeEl = document.getElementById('customer-sync-code-display');
-    const statusEl = document.getElementById('customer-sync-conn-status');
-    if (!codeEl || !statusEl) return;
-    codeEl.textContent = PetPujaSync.getSyncCode() || todayDateStamp();
-    const online = typeof PetPujaSync.isOnline === 'function' ? PetPujaSync.isOnline() : true;
-    statusEl.classList.toggle('offline', !online);
-    statusEl.innerHTML = `<span class="dot"></span>${online ? 'Live' : 'Offline'}`;
-  },
-
   bindWelcomeScreen(){
     document.getElementById('btn-enter-customer').addEventListener('click', () => this.showScreen('customer-screen'));
     document.getElementById('btn-enter-owner').addEventListener('click', () => this.showScreen('owner-login-screen'));
     document.getElementById('btn-back-from-login').addEventListener('click', () => this.showScreen('welcome-screen', { direction: 'back' }));
     document.getElementById('btn-customer-home').addEventListener('click', () => this.showScreen('welcome-screen', { direction: 'back' }));
-
-    // Manual "force sync now" buttons - pulls the shared room immediately
-    // instead of waiting for the next poll tick, and gives clear feedback
-    // (Live / Shop closed / Offline) so it's obvious the tap did something.
-    const doRefresh = async (btnId) => {
-      const btn = document.getElementById(btnId);
-      if (!btn) return;
-      const icon = btn.querySelector('i');
-      icon.classList.add('fa-spin');
-      const ok = typeof PetPujaSync.forceRefresh === 'function'
-        ? await PetPujaSync.forceRefresh()
-        : true;
-      icon.classList.remove('fa-spin');
-      showToast(ok ? 'Synced' : 'Offline - showing last known data', ok ? 'success' : 'error');
-    };
-    document.getElementById('btn-customer-refresh').addEventListener('click', () => doRefresh('btn-customer-refresh'));
-    document.getElementById('btn-owner-refresh').addEventListener('click', () => doRefresh('btn-owner-refresh'));
   },
 
   goToOwnerDashboard(){
-    // Switch the sync engine into Owner mode (claims today's 5-character
-    // host id) if it isn't already, so logging in as Owner on a device
-    // that booted as a plain Customer immediately starts broadcasting
-    // today's shared room to every connected/joining Customer device.
-    if (PetPujaSync.role !== 'owner'){
-      PetPujaSync.setRole('owner');
-      PetPujaSync.start().catch(() => {});
-    }
     this.showScreen('owner-screen');
     Owner.navigateTo('dashboard');
   },
@@ -4572,9 +3284,7 @@ const App = {
           "});";
         const swBlob = new Blob([swSource], { type: 'application/javascript' });
         const swUrl = URL.createObjectURL(swBlob);
-        navigator.serviceWorker.register(swUrl).catch((err) => {
-          console.info('Pet Puja: service worker registration failed (app still works online).', err && err.message);
-        });
+        navigator.serviceWorker.register(swUrl).catch(() => { /* app still works online */ });
       }
     }catch(e){ /* PWA wiring is progressive-enhancement only */ }
   },
@@ -4690,10 +3400,10 @@ const App = {
 
 document.addEventListener('DOMContentLoaded', () => {
   // Absolute failsafe: no matter what happens inside App.init() (a
-  // thrown error, a slow/unreachable network, anything) the splash
-  // screen is force-hidden after 6s so the app can never appear stuck
-  // "booting" forever. showScreen() itself is a no-op if a screen is
-  // already active, so this never fights with a normal, on-time boot.
+  // thrown error, a slow device, anything) the splash screen is
+  // force-hidden after 6s so the app can never appear stuck "booting"
+  // forever. showScreen() itself is a no-op if a screen is already
+  // active, so this never fights with a normal, on-time boot.
   const failSafe = setTimeout(() => {
     const splash = document.getElementById('splash-screen');
     if (splash && !splash.classList.contains('fade-out')){
@@ -4708,9 +3418,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }, 6000);
 
   Promise.resolve(App.init())
-    .catch((err) => {
-      console.error('Pet Puja: App.init() failed, falling back to welcome screen.', err);
-    })
+    .catch(() => { /* fall back to welcome screen via failsafe below */ })
     .finally(() => clearTimeout(failSafe));
 });
 window.App = App;
